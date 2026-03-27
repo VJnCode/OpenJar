@@ -3,7 +3,9 @@ package com.recipeapp.recipe_service.Model;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import lombok.Data;
 
+@Data
 @Entity
 @Table(name="recipe")
 public class Recipe {
@@ -21,8 +23,8 @@ public class Recipe {
     @Lob
     private String recipeInstructions;
     private String recipeImageUrl;
-    @ManyToOne
-    @JoinColumn(name="userId")
-    private User user;
+//    @ManyToOne
+//    @JoinColumn(name="userId")
+    private long userId;
 
 }

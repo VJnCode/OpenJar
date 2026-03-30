@@ -1,9 +1,9 @@
-package com.openjar.user_service.config;
+package com.openjar.user_service.exception;
 
-import com.openjar.user_service.exception.ResourceNotFoundException;
-import com.openjar.user_service.exception.UserAlreadyExistsException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
@@ -36,5 +36,16 @@ public class GlobalExceptionHandler {
         errorBody.put("status", status.value());
         errorBody.put("error", status.getReasonPhrase());
         return new ResponseEntity<>(errorBody, status);
+    }
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, String>> handleValidationExceptions(MethodArgumentNotValidException ex) {
+        Map<String, String> errors = new HashMap<>();
+
+        // Extract the field name and the specific error message
+        for (FieldError error : ex.getBindingResult().getFieldErrors()) {
+            errors.put(error.getField(), error.getDefaultMessage());
+        }
+
+        return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
     }
 }

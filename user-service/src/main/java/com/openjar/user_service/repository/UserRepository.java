@@ -10,7 +10,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -26,13 +25,18 @@ public interface UserRepository extends JpaRepository<User, String> {
 
     @Modifying
     @Transactional
-    @Query(value = "INSERT INTO users (user_name, user_email, password, created_at, updated_at) " +
-            "VALUES (:userName, :userEmail, :password, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)", nativeQuery = true)
-    void insertUserNative(@Param("userName") String userName, @Param("userEmail") String userEmail, @Param("password") String password);
+    @Query(value = "INSERT INTO users (user_id, user_name, user_email, password, created_at) " +
+            "VALUES (:userId, :userName, :userEmail, :password, NOW())", nativeQuery = true)
+    void insertUserNative(
+            @Param("userId") String userId,
+            @Param("userName") String userName,
+            @Param("userEmail") String userEmail,
+            @Param("password") String password
+    );
 
     @Modifying
     @Transactional
-    @Query(value = "UPDATE users SET user_name = :userName, user_email = :userEmail, updated_at = CURRENT_TIMESTAMP " +
+    @Query(value = "UPDATE users SET user_name = :userName, user_email = :userEmail " +
             "WHERE user_id = :id", nativeQuery = true)
     void updateUserNative(@Param("id") String id, @Param("userName") String userName, @Param("userEmail") String userEmail);
 

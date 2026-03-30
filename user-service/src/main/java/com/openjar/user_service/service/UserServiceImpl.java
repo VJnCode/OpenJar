@@ -32,10 +32,6 @@ public class UserServiceImpl implements UserService {
                 .map(this::mapToResponseDto);
     }
 
-    @Override
-    public UserResponseDto getUserById(Long id) {
-        return null;
-    }
 
     @Override
     public UserResponseDto getUserById(String id) {
@@ -49,28 +45,19 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void createUser(UserRequestDto request) {
-        log.info("Attempting to create new user with email: {}", request.getUserEmail());
+    public void createUser(UserRequestDto requestDto) {
+        String newUserId = java.util.UUID.randomUUID().toString();
 
-        if (userRepository.countByUserEmailNative(request.getUserEmail()) > 0) {
-            log.warn("Creation failed. Email already exists: {}", request.getUserEmail());
-            throw new UserAlreadyExistsException("Email is already registered!");
-        }
+        String encodedPassword = passwordEncoder.encode(requestDto.getPassword());
 
-        if (userRepository.countByUserNameNative(request.getUserName()) > 0) {
-            log.warn("Creation failed. Username already taken: {}", request.getUserName());
-            throw new UserAlreadyExistsException("Username is already taken!");
-        }
-
-        String hashedPassword = passwordEncoder.encode(request.getPassword());
-        userRepository.insertUserNative(request.getUserName(), request.getUserEmail(), hashedPassword);
-        log.info("User created successfully with email: {}", request.getUserEmail());
+        userRepository.insertUserNative(
+                newUserId,
+                requestDto.getUserName(),
+                requestDto.getUserEmail(),
+                encodedPassword
+        );
     }
 
-    @Override
-    public void updateUser(Long id, UserRequestDto requestDto) {
-
-    }
 
     @Override
     public void updateUser(String id, UserRequestDto request) {
@@ -83,11 +70,6 @@ public class UserServiceImpl implements UserService {
 
         userRepository.updateUserNative(id, request.getUserName(), request.getUserEmail());
         log.info("User updated successfully with ID: {}", id);
-    }
-
-    @Override
-    public void deleteUser(Long id) {
-
     }
 
     @Override
@@ -109,7 +91,6 @@ public class UserServiceImpl implements UserService {
         dto.setUserName(user.getUserName());
         dto.setUserEmail(user.getUserEmail());
         dto.setCreatedAt(user.getCreatedAt());
-        dto.setUpdatedAt(user.getUpdatedAt());
         return dto;
     }
 }

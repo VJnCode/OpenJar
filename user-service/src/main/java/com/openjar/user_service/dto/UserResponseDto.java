@@ -9,5 +9,4 @@ public class UserResponseDto {
     private String userName;
     private String userEmail;
     private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
 }

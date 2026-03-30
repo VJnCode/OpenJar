@@ -13,13 +13,13 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    // 1. This creates the BCrypt tool we will use in our Service
+    // creates the BCrypt tool we will use in our Service
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    // 2. This disables the "bouncer" so our API remains open for testing
+    // API remains open for testing
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)

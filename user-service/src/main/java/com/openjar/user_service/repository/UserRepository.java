@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface UserRepository extends JpaRepository<User, Long> {
+public interface UserRepository extends JpaRepository<User, String> {
 
     @Query(value = "SELECT * FROM users",
             countQuery = "SELECT COUNT(*) FROM users",
@@ -22,7 +22,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Page<User> findAllUsersNative(Pageable pageable);
 
     @Query(value = "SELECT * FROM users WHERE user_id = :id", nativeQuery = true)
-    Optional<User> findUserByIdNative(@Param("id") Long id);
+    Optional<User> findUserByIdNative(@Param("id") String id);
 
     @Modifying
     @Transactional
@@ -34,12 +34,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Transactional
     @Query(value = "UPDATE users SET user_name = :userName, user_email = :userEmail, updated_at = CURRENT_TIMESTAMP " +
             "WHERE user_id = :id", nativeQuery = true)
-    void updateUserNative(@Param("id") Long id, @Param("userName") String userName, @Param("userEmail") String userEmail);
+    void updateUserNative(@Param("id") String id, @Param("userName") String userName, @Param("userEmail") String userEmail);
 
     @Modifying
     @Transactional
     @Query(value = "DELETE FROM users WHERE user_id = :id", nativeQuery = true)
-    void deleteUserNative(@Param("id") Long id);
+    void deleteUserNative(@Param("id") String id);
 
     @Query(value = "SELECT COUNT(*) FROM users WHERE user_email = :email", nativeQuery = true)
     int countByUserEmailNative(@Param("email") String email);

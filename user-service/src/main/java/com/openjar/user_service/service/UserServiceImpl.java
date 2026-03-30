@@ -34,6 +34,11 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserResponseDto getUserById(Long id) {
+        return null;
+    }
+
+    @Override
+    public UserResponseDto getUserById(String id) {
         log.info("Fetching user with ID: {}", id);
         User user = userRepository.findUserByIdNative(id)
                 .orElseThrow(() -> {
@@ -63,7 +68,12 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void updateUser(Long id, UserRequestDto request) {
+    public void updateUser(Long id, UserRequestDto requestDto) {
+
+    }
+
+    @Override
+    public void updateUser(String id, UserRequestDto request) {
         log.info("Attempting to update user with ID: {}", id);
 
         userRepository.findUserByIdNative(id).orElseThrow(() -> {
@@ -77,6 +87,11 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void deleteUser(Long id) {
+
+    }
+
+    @Override
+    public void deleteUser(String id) {
         log.info("Attempting to delete user with ID: {}", id);
 
         userRepository.findUserByIdNative(id).orElseThrow(() -> {

@@ -1,0 +1,40 @@
+services:
+  # --- User Service Infrastructure ---
+  user-db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: OpenJar_User
+    ports:
+      - "3307:3306" # Mapped to 3307 to avoid conflict if you have local MySQL
+
+  user-service:
+    build: ./user-service
+    ports:
+      - "8086:8086"
+    depends_on:
+      - user-db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://user-db:3306/OpenJar_User
+
+  # --- Social Service Infrastructure ---
+  social-db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: OpenJar_Social
+    ports:
+      - "3308:3306"
+
+  social-service:
+    build: ./social-service
+    ports:
+      - "8087:8087"
+    depends_on:
+      - social-db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://social-db:3306/OpenJar_Social
+
+networks:
+  default:
+    name: openjar-network

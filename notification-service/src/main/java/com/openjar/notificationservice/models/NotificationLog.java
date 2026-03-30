@@ -1,0 +1,23 @@
+package com.openjar.notificationservice.models;
+
+import jakarta.persistence.*;
+import lombok.*;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "notification_logs")
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class NotificationLog {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    private String recipient;
+    private String subject;
+    
+    @Column(columnDefinition = "TEXT")
+    private String content;
+    
+    private String status; // SENT, FAILED
+    private LocalDateTime sentAt;
+}

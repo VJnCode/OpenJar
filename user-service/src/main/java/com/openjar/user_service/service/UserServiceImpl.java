@@ -8,10 +8,11 @@ import com.openjar.user_service.models.User;
 import com.openjar.user_service.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -20,13 +21,15 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     @Override
-    public List<UserResponseDto> getAllUsers() {
-        log.info("Fetching all users from the database");
-        return userRepository.findAllUsersNative()
-                .stream()
-                .map(this::mapToResponseDto)
-                .collect(Collectors.toList());
+    public Page<UserResponseDto> getAllUsers(int page, int size) {
+        log.info("Fetching page {} of users with size {}", page, size);
+        Pageable pageable = PageRequest.of(page, size);
+        return userRepository.findAllUsersNative(pageable)
+                .map(this::mapToResponseDto);
     }
 
     @Override
@@ -54,7 +57,8 @@ public class UserServiceImpl implements UserService {
             throw new UserAlreadyExistsException("Username is already taken!");
         }
 
-        userRepository.insertUserNative(request.getUserName(), request.getUserEmail(), request.getPassword());
+        String hashedPassword = passwordEncoder.encode(request.getPassword());
+        userRepository.insertUserNative(request.getUserName(), request.getUserEmail(), hashedPassword);
         log.info("User created successfully with email: {}", request.getUserEmail());
     }
 

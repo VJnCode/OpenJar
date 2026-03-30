@@ -6,12 +6,13 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
-@ControllerAdvice
+@RestControllerAdvice(basePackages = "com.openjar.user_service.controller")
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)

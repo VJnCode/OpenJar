@@ -6,6 +6,7 @@ import com.openjar.user_service.dto.UserResponseDto;
 import com.openjar.user_service.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,8 +21,10 @@ public class UserController {
     private UserService userService;
 
     @GetMapping
-    public ResponseEntity<List<UserResponseDto>> getAllUsers() {
-        return ResponseEntity.ok(userService.getAllUsers());
+    public ResponseEntity<Page<UserResponseDto>> getAllUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(userService.getAllUsers(page, size));
     }
 
     @GetMapping("/{id}")

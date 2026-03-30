@@ -1,6 +1,8 @@
 package com.openjar.user_service.repository;
 
 import com.openjar.user_service.models.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -14,8 +16,10 @@ import java.util.Optional;
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
 
-    @Query(value = "SELECT * FROM users", nativeQuery = true)
-    List<User> findAllUsersNative();
+    @Query(value = "SELECT * FROM users",
+            countQuery = "SELECT COUNT(*) FROM users",
+            nativeQuery = true)
+    Page<User> findAllUsersNative(Pageable pageable);
 
     @Query(value = "SELECT * FROM users WHERE user_id = :id", nativeQuery = true)
     Optional<User> findUserByIdNative(@Param("id") Long id);

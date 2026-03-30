@@ -1,8 +1,9 @@
-package com.openjar.user_service.service;
+package com.openjar.user_service;
 
 import com.openjar.user_service.dto.UserRequestDto;
 import com.openjar.user_service.exception.UserAlreadyExistsException;
 import com.openjar.user_service.repository.UserRepository;
+import com.openjar.user_service.service.UserServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

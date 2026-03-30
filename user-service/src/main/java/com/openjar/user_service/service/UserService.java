@@ -13,4 +13,6 @@ public interface UserService {
     void updateUser(String id, UserRequestDto request);
 
     void deleteUser(String id);
+
+    boolean verifyAccount(String email, String otp);
 }

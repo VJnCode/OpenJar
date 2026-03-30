@@ -3,6 +3,7 @@ package com.openjar.user_service.controller;
 
 import com.openjar.user_service.dto.UserRequestDto;
 import com.openjar.user_service.dto.UserResponseDto;
+import com.openjar.user_service.dto.VerifyRequestDto;
 import com.openjar.user_service.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,7 +33,7 @@ public class UserController {
         return ResponseEntity.ok(userService.getUserById(id));
     }
 
-    @PostMapping
+    @PostMapping("/register")
     public ResponseEntity<String> createUser(@Valid @RequestBody UserRequestDto requestDto) {
         userService.createUser(requestDto);
         return new ResponseEntity<>("User created successfully", HttpStatus.CREATED);
@@ -48,5 +49,16 @@ public class UserController {
     public ResponseEntity<String> deleteUser(@PathVariable String id) {
         userService.deleteUser(id);
         return ResponseEntity.ok("User deleted successfully");
+    }
+
+    @PostMapping("/verify")
+    public ResponseEntity<String> verifyUser(@RequestBody VerifyRequestDto requestDto) {
+        boolean isVerified = userService.verifyAccount(requestDto.getEmail(), requestDto.getOtp());
+
+        if (isVerified) {
+            return ResponseEntity.ok("Registration successful! Your account is now verified and active.");
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid Email or OTP.");
+        }
     }
 }

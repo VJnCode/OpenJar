@@ -54,14 +54,12 @@ spring:
     activate:
       on-profile: test
 
-  # Use an H2 In-Memory database for testing so you don't need MySQL running
   datasource:
     url: jdbc:h2:mem:testdb
     driver-class-name: org.h2.Driver
     username: sa
     password:
 
-  # Use a mock/local mail server like Mailtrap or Mailhog
   mail:
     host: localhost
     port: 1025

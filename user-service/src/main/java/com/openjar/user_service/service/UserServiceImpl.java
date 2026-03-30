@@ -1,28 +1,37 @@
 package com.openjar.user_service.service;
 
+import com.openjar.user_service.config.RabbitMQConfig;
+import com.openjar.user_service.dto.EmailNotificationDto;
 import com.openjar.user_service.dto.UserRequestDto;
 import com.openjar.user_service.dto.UserResponseDto;
 import com.openjar.user_service.exception.ResourceNotFoundException;
 import com.openjar.user_service.exception.UserAlreadyExistsException;
 import com.openjar.user_service.models.User;
 import com.openjar.user_service.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import java.security.SecureRandom;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
     @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
     @Autowired
-    private PasswordEncoder passwordEncoder;
+    private final PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private final RabbitTemplate rabbitTemplate;
 
     @Override
     public Page<UserResponseDto> getAllUsers(int page, int size) {
@@ -44,18 +53,52 @@ public class UserServiceImpl implements UserService {
         return mapToResponseDto(user);
     }
 
+    private String generateOTP() {
+        SecureRandom random = new SecureRandom();
+        int otp = random.nextInt(1000000);
+        return String.format("%06d", otp); // Ensures it's always 6 digits, e.g., "004021"
+    }
+
     @Override
     public void createUser(UserRequestDto requestDto) {
-        String newUserId = java.util.UUID.randomUUID().toString();
+        if (userRepository.checkEmailExistsNative(requestDto.getUserEmail()) > 0) {
+            throw new IllegalArgumentException("Email already exists.");
+        }
 
+        String newUserId = java.util.UUID.randomUUID().toString();
         String encodedPassword = passwordEncoder.encode(requestDto.getPassword());
+        String generatedOtp = generateOTP();
 
         userRepository.insertUserNative(
                 newUserId,
                 requestDto.getUserName(),
                 requestDto.getUserEmail(),
-                encodedPassword
+                encodedPassword,
+                generatedOtp
         );
+
+        EmailNotificationDto emailDto = new EmailNotificationDto(
+                requestDto.getUserEmail(),
+                generatedOtp,
+                "Welcome to OpenJar - Verify Your Account"
+        );
+
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.ROUTING_KEY, emailDto);
+
+        log.info("OTP event published to RabbitMQ for {}", requestDto.getUserEmail());
+    }
+
+    @Override
+    public boolean verifyAccount(String email, String otp) {
+        int updatedRows = userRepository.verifyUserNative(email, otp);
+
+        if (updatedRows > 0) {
+            log.info("✅ SUCCESS: Account successfully verified for {}", email);
+            return true;
+        } else {
+            log.warn("❌ VERIFICATION FAILED: Invalid OTP attempt for {}", email);
+            return false;
+        }
     }
 
 

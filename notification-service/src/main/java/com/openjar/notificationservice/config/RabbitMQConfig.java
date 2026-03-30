@@ -1,7 +1,8 @@
 package com.openjar.notificationservice.config;
 
 import org.springframework.amqp.core.*;
-import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+// Notice the new import below (No '2' in the name!)
+import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,14 +11,18 @@ import org.springframework.context.annotation.Configuration;
 public class RabbitMQConfig {
 
     public static final String QUEUE = "notification_queue";
-    public static final String EXCHANGE = "notification_exchange";
-    public static final String ROUTING_KEY = "notification_routingKey";
+    public static final String EXCHANGE = "openjar_exchange"; // Updated to match User Service
+    public static final String ROUTING_KEY = "notification_routing_key"; // Updated to match User Service
 
     @Bean
-    public Queue queue() { return new Queue(QUEUE); }
+    public Queue queue() {
+        return new Queue(QUEUE, true);
+    }
 
     @Bean
-    public TopicExchange exchange() { return new TopicExchange(EXCHANGE); }
+    public TopicExchange exchange() {
+        return new TopicExchange(EXCHANGE);
+    }
 
     @Bean
     public Binding binding(Queue queue, TopicExchange exchange) {
@@ -26,6 +31,6 @@ public class RabbitMQConfig {
 
     @Bean
     public MessageConverter converter() {
-        return new Jackson2JsonMessageConverter();
+        return new JacksonJsonMessageConverter();
     }
 }

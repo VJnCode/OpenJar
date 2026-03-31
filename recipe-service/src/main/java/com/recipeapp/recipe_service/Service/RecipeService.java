@@ -25,7 +25,7 @@ public class RecipeService {
     }
 
 
-    public String saveRecipe( RecipeRequestDto recipe){
+    public String saveRecipe( RecipeRequestDto recipe,long userId){
 //        try {
 //            userClient.getUserById(recipe.getUserId());
 //        } catch (Exception e) {
@@ -39,7 +39,7 @@ public class RecipeService {
                 recipe.getIngredients(),
                 recipe.getRecipeInstructions(),
                 recipe.getRecipeImageUrl(),
-                recipe.getUserId()
+               userId
         );
 
         if(rows > 0){
@@ -80,7 +80,7 @@ public class RecipeService {
 
 
     @Transactional
-    public Recipe updateRecipeById(long recipeId ,  RecipeRequestDto updatedRecipe){
+    public Recipe updateRecipeById(long recipeId ,  RecipeRequestDto updatedRecipe, long userId){
 
 //        try {
 //            userClient.getUserById( updatedRecipe.getUserId());
@@ -95,7 +95,7 @@ public class RecipeService {
                 updatedRecipe.getIngredients(),
                 updatedRecipe.getRecipeInstructions(),
                 updatedRecipe.getRecipeImageUrl(),
-                updatedRecipe.getUserId(),
+                userId,
                 recipeId
         );
 

@@ -20,8 +20,10 @@ public class RecipeController {
     }
 
     @PostMapping
-    public ResponseEntity<?> saveRecipe(@RequestBody RecipeRequestDto recipe){
-      String response=  service.saveRecipe(recipe);
+    public ResponseEntity<?> saveRecipe(@RequestBody RecipeRequestDto recipe,
+                                        @RequestHeader("X-User-Id") Long userId){
+//        recipe.setUserId(userId);
+      String response=  service.saveRecipe(recipe, userId);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body("Recipe added successfully");
@@ -46,11 +48,11 @@ public class RecipeController {
     }
 
 
-//    @PutMapping("/{recipeId}")
-//    public ResponseEntity<?> updateRecipeById(@PathVariable long recipeId , @RequestBody  RecipeRequestDto updatedRecipe){
-//        Recipe resposne =service.updateRecipeById(recipeId , updatedRecipe);
-//        return ResponseEntity.ok(resposne);
-//    }
+    @PutMapping("/{recipeId}")
+    public ResponseEntity<?> updateRecipeById(@PathVariable long recipeId , @RequestBody  RecipeRequestDto updatedRecipe){
+        Recipe resposne =service.updateRecipeById(recipeId , updatedRecipe);
+        return ResponseEntity.ok(resposne);
+    }
 
 
 

@@ -28,16 +28,22 @@ public class RecipeService {
         this.webClient = webClientBuilder.baseUrl("http://localhost:8086").build();
     }
 
-    @Transactional
-    public String saveRecipe(RecipeRequestDto recipeRequest) {
+
+    public String saveRecipe( RecipeRequestDto recipe){
+//        try {
+//            userClient.getUserById(recipe.getUserId());
+//        } catch (Exception e) {
+//            throw new RuntimeException("User does not exist");
+//        }
+
         int rows = recipeRepo.insertRecipe(
-                recipeRequest.getRecipeName(),
-                recipeRequest.getPrepTime(),
-                recipeRequest.getCategory(),
-                recipeRequest.getIngredients(),
-                recipeRequest.getRecipeInstructions(),
-                recipeRequest.getRecipeImageUrl(),
-                recipeRequest.getUserId()
+                recipe.getRecipeName(),
+                recipe.getPrepTime(),
+                recipe.getCategory(),
+                recipe.getIngredients(),
+                recipe.getRecipeInstructions(),
+                recipe.getRecipeImageUrl(),
+                recipe.getUserId()
         );
 
         System.out.println(">>> DB Insert Rows: " + rows);
@@ -91,8 +97,42 @@ public class RecipeService {
     public Recipe getRecipeById(long id) { return recipeRepo.getRecipeById(id); }
 
     @Transactional
-    public String deleteRecipeById(long id) {
-        int rows = recipeRepo.deleteRecipeById(id);
-        return rows > 0 ? "Deleted" : "Not Found";
+    public Recipe updateRecipeById(long recipeId ,  RecipeRequestDto updatedRecipe){
+
+//        try {
+//            userClient.getUserById( updatedRecipe.getUserId());
+//        } catch (Exception e) {
+//            throw new RuntimeException("User does not exist");
+//        }
+
+        int rows = recipeRepo.updateRecipe(
+                updatedRecipe.getRecipeName(),
+                updatedRecipe.getPrepTime(),
+                updatedRecipe.getCategory(),
+                updatedRecipe.getIngredients(),
+                updatedRecipe.getRecipeInstructions(),
+                updatedRecipe.getRecipeImageUrl(),
+                updatedRecipe.getUserId(),
+                recipeId
+        );
+
+        if(rows == 0){
+            throw new RuntimeException("Recipe not found");
+        }
+
+        return recipeRepo.getRecipeById(recipeId);
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
 }

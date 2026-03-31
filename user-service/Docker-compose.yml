@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  # 1. The Database Container
+  mysqldb:
+    image: mysql:8.0
+    container_name: openjar-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: OpenJar
+    ports:
+      - "3307:3306" # Maps your PC's port 3307 to the container's 3306
+    volumes:
+      - mysql-data:/var/lib/mysql # Saves your data so it isn't lost on restart
+
+  # 2. Your Spring Boot Container
+  user-service:
+    build: .
+    container_name: openjar-user-service
+    ports:
+      - "8086:8086"
+    depends_on:
+      - mysqldb # Wait for the DB to start
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysqldb:3306/OpenJar?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"   # The port the microservices use to connect
+      - "15672:15672" # The Web UI port
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+volumes:
+  mysql-data:

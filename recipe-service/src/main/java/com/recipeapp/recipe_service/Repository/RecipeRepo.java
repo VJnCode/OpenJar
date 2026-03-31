@@ -15,8 +15,8 @@ public interface RecipeRepo extends JpaRepository<Recipe,Long> {
 
     @Modifying
     @Transactional
-    @Query(value = "INSERT INTO recipe (recipe_name, prep_time, category, ingredients, recipe_instructions, recipe_image_url, user_id) " +
-            "VALUES (:name, :prepTime, :category, :ingredients, :instructions, :imageUrl, :userId)", nativeQuery = true)
+    @Query(value = "INSERT INTO recipe (recipe_name, prep_time, category, ingredients, recipe_instructions, recipe_image_url,like_count, user_id) " +
+            "VALUES (:name, :prepTime, :category, :ingredients, :instructions, :imageUrl,0, :userId)", nativeQuery = true)
     int insertRecipe(
             @Param("name") String name,
             @Param("prepTime") int prepTime,
@@ -59,6 +59,11 @@ public interface RecipeRepo extends JpaRepository<Recipe,Long> {
     );
 
 
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE recipes SET like_count = like_count + :delta WHERE recipe_id = :recipeId",
+            nativeQuery = true)
+    void updateLikeCount(@Param("recipeId") Long recipeId, @Param("delta") int delta);
 
 
 

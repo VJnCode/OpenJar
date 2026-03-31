@@ -23,7 +23,9 @@ public class Recipe {
     @Lob
     private String recipeInstructions;
     private String recipeImageUrl;
-//    @ManyToOne
+    @Column(name = "like_count")
+    private long likeCount = 0;
+    //    @ManyToOne
 //    @JoinColumn(name="userId")
     private long userId;
 

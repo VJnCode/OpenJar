@@ -1,6 +1,7 @@
 package com.recipeapp.recipe_service.Controller;
 
 
+import com.recipeapp.recipe_service.DTO.RecipeRequestDto;
 import com.recipeapp.recipe_service.Model.Recipe;
 import com.recipeapp.recipe_service.Service.RecipeService;
 import org.springframework.http.HttpStatus;
@@ -19,7 +20,7 @@ public class RecipeController {
     }
 
     @PostMapping
-    public ResponseEntity<?> saveRecipe(@RequestBody Recipe recipe){
+    public ResponseEntity<?> saveRecipe(@RequestBody RecipeRequestDto recipe){
       String response=  service.saveRecipe(recipe);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -46,7 +47,7 @@ public class RecipeController {
 
 
     @PutMapping("/{recipeId}")
-    public ResponseEntity<?> updateRecipeById(@PathVariable long recipeId , @RequestBody Recipe updatedRecipe){
+    public ResponseEntity<?> updateRecipeById(@PathVariable long recipeId , @RequestBody  RecipeRequestDto updatedRecipe){
         Recipe resposne =service.updateRecipeById(recipeId , updatedRecipe);
         return ResponseEntity.ok(resposne);
     }

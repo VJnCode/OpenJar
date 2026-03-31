@@ -1,8 +1,12 @@
 package com.recipeapp.recipe_service.Service;
 
 
+import com.recipeapp.recipe_service.DTO.RecipeRequestDto;
+import com.recipeapp.recipe_service.DTO.UserDto;
+//import com.recipeapp.recipe_service.Feign.UserClient;
 import com.recipeapp.recipe_service.Model.Recipe;
 import com.recipeapp.recipe_service.Repository.RecipeRepo;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,13 +17,20 @@ public class RecipeService {
 
 
     private RecipeRepo recipeRepo;
+//    @Autowired
+//    private UserClient userClient;
 
     public RecipeService(RecipeRepo recipeRepo){
         this.recipeRepo = recipeRepo;
     }
 
 
-    public String saveRecipe(Recipe recipe){
+    public String saveRecipe( RecipeRequestDto recipe){
+//        try {
+//            userClient.getUserById(recipe.getUserId());
+//        } catch (Exception e) {
+//            throw new RuntimeException("User does not exist");
+//        }
 
         int rows = recipeRepo.insertRecipe(
                 recipe.getRecipeName(),
@@ -69,7 +80,13 @@ public class RecipeService {
 
 
     @Transactional
-    public Recipe updateRecipeById(long recipeId , Recipe updatedRecipe){
+    public Recipe updateRecipeById(long recipeId ,  RecipeRequestDto updatedRecipe){
+
+//        try {
+//            userClient.getUserById( updatedRecipe.getUserId());
+//        } catch (Exception e) {
+//            throw new RuntimeException("User does not exist");
+//        }
 
         int rows = recipeRepo.updateRecipe(
                 updatedRecipe.getRecipeName(),

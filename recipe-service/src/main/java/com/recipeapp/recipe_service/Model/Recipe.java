@@ -27,6 +27,6 @@ public class Recipe {
     private long likeCount = 0;
     //    @ManyToOne
 //    @JoinColumn(name="userId")
-    private long userId;
+    private String userId;
 
 }

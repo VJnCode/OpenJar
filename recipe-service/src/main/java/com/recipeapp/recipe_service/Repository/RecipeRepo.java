@@ -24,7 +24,7 @@ public interface RecipeRepo extends JpaRepository<Recipe,Long> {
             @Param("ingredients") String ingredients,
             @Param("instructions") String instructions,
             @Param("imageUrl") String imageUrl,
-            @Param("userId") Long userId
+            @Param("userId") String userId
     );
 
     // ✅ GET ALL
@@ -54,7 +54,7 @@ public interface RecipeRepo extends JpaRepository<Recipe,Long> {
             @Param("ingredients") String ingredients,
             @Param("instructions") String instructions,
             @Param("imageUrl") String imageUrl,
-            @Param("userId") Long userId,
+            @Param("userId") String userId,
             @Param("id") Long id
     );
 

@@ -4,14 +4,19 @@ server:
 spring:
   application:
     name: social-service
+
   datasource:
-    url: jdbc:mysql://localhost:3306/OpenJar_Social?createDatabaseIfNotExist=true
-    username: root
-    password: 1234
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
+    url: ${DB_URL:jdbc:mysql://localhost:3306/openjar_social}
+    username: ${DB_USER:root}
+    password: ${DB_PASS:1234}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # RabbitMQ connection for the producer
+  rabbitmq:
+    host: ${RABBIT_HOST:localhost}
+    port: 5672
+    username: ${RABBIT_USER:guest}
+    password: ${RABBIT_PASS:guest}
 
 # Swagger/OpenAPI Configuration
 springdoc:

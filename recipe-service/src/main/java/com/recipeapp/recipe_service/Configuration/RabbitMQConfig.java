@@ -1,7 +1,7 @@
 package com.recipeapp.recipe_service.Configuration;
 
 
-import ch.qos.logback.classic.pattern.MessageConverter;
+//import ch.qos.logback.classic.pattern.MessageConverter;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
@@ -16,6 +16,7 @@ public class RabbitMQConfig {
     public static final String LIKE_QUEUE = "like_queue";
     public static final String EXCHANGE = "openjar_exchange";
     public static final String LIKE_ROUTING_KEY = "like_routing_key";
+    public static final String NOTIFICATION_ROUTING_KEY = "notification_routing_key";
 
     @Bean
     public Queue likeQueue() {
@@ -33,7 +34,15 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public JacksonJsonMessageConverter converter() {
+    public Binding notificationBinding(TopicExchange exchange) {
+        return BindingBuilder
+                .bind(new Queue("notification_queue", true))
+                .to(exchange)
+                .with(NOTIFICATION_ROUTING_KEY);
+    }
+
+    @Bean
+    public org.springframework.amqp.support.converter.MessageConverter converter() {
         return new JacksonJsonMessageConverter();
     }
 }

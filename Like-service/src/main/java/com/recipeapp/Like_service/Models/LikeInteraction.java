@@ -1,4 +1,19 @@
 package com.recipeapp.Like_service.Models;
 
-public class Like {
+import lombok.Data;
+import jakarta.persistence.*;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name="likes")
+@Data
+public class LikeInteraction {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private long likeId;
+    private long recipeId;
+    private long userId;
+    private LocalDateTime createdAt;
+
 }

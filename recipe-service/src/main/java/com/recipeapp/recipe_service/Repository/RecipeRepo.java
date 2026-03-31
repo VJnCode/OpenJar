@@ -61,7 +61,7 @@ public interface RecipeRepo extends JpaRepository<Recipe,Long> {
 
     @Modifying
     @Transactional
-    @Query(value = "UPDATE recipes SET like_count = like_count + :delta WHERE recipe_id = :recipeId",
+    @Query(value = "UPDATE recipe SET like_count = like_count + :delta WHERE recipe_id = :recipeId",
             nativeQuery = true)
     void updateLikeCount(@Param("recipeId") Long recipeId, @Param("delta") int delta);
 

@@ -12,7 +12,7 @@ public class RecipeRequestDto {
         private String ingredients;
         private String recipeInstructions;
         private String recipeImageUrl;
-        private Long userId;
+//        private Long userId;
 
 
 }

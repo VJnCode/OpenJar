@@ -11,11 +11,20 @@ spring:
           enabled: true
           lower-case-service-id: true
       routes:
-        - id: user-service-route
-          # Try changing 'lb://user-service' to the line below if it still fails
-          uri: lb://user-service
+        - id: user-service
+          uri: lb://USER-SERVICE
           predicates:
             - Path=/api/users/**
+
+        - id: recipe-service
+          uri: lb://RECIPE-SERVICE
+          predicates:
+            - Path=/recipe/**
+
+        - id: social-service
+          uri: lb://SOCIAL-SERVICE
+          predicates:
+            - Path=/api/social/**
 
 eureka:
   client:

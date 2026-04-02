@@ -20,10 +20,9 @@ public class RecipeController {
     }
 
     @PostMapping
-    public ResponseEntity<?> saveRecipe(@RequestBody RecipeRequestDto recipe,
-                                        @RequestHeader("X-User-Id") Long userId){
+    public ResponseEntity<?> saveRecipe(@RequestBody RecipeRequestDto recipe){
 //        recipe.setUserId(userId);
-      String response=  service.saveRecipe(recipe, userId);
+      String response=  service.saveRecipe(recipe);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body("Recipe added successfully");

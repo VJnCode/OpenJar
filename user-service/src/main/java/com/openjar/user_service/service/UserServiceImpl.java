@@ -4,6 +4,7 @@ import com.openjar.user_service.config.RabbitMQConfig;
 import com.openjar.user_service.dto.EmailNotificationDto;
 import com.openjar.user_service.dto.UserRequestDto;
 import com.openjar.user_service.dto.UserResponseDto;
+import com.openjar.user_service.exception.InvalidOtpException;
 import com.openjar.user_service.exception.ResourceNotFoundException;
 import com.openjar.user_service.exception.UserAlreadyExistsException;
 import com.openjar.user_service.models.User;
@@ -11,61 +12,47 @@ import com.openjar.user_service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.security.SecureRandom;
+import java.util.UUID;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor // Handles all 'final' fields injection automatically
 public class UserServiceImpl implements UserService {
 
-    @Autowired
     private final UserRepository userRepository;
-
-    @Autowired
     private final PasswordEncoder passwordEncoder;
-
-    @Autowired
     private final RabbitTemplate rabbitTemplate;
 
     @Override
     public Page<UserResponseDto> getAllUsers(int page, int size) {
-        log.info("Fetching page {} of users with size {}", page, size);
+        log.info("Fetching page {} of users", page);
         Pageable pageable = PageRequest.of(page, size);
-        return userRepository.findAllUsersNative(pageable)
-                .map(this::mapToResponseDto);
+        return userRepository.findAllUsersNative(pageable).map(this::mapToResponseDto);
     }
-
 
     @Override
     public UserResponseDto getUserById(String id) {
-        log.info("Fetching user with ID: {}", id);
         User user = userRepository.findUserByIdNative(id)
-                .orElseThrow(() -> {
-                    log.error("User not found with ID: {}", id);
-                    return new ResourceNotFoundException("User not found with id: " + id);
-                });
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
         return mapToResponseDto(user);
     }
 
-    private String generateOTP() {
-        SecureRandom random = new SecureRandom();
-        int otp = random.nextInt(1000000);
-        return String.format("%06d", otp); // Ensures it's always 6 digits, e.g., "004021"
-    }
-
     @Override
+    @Transactional
     public void createUser(UserRequestDto requestDto) {
         if (userRepository.checkEmailExistsNative(requestDto.getUserEmail()) > 0) {
-            throw new IllegalArgumentException("Email already exists.");
+            throw new UserAlreadyExistsException("Account already exists with email: " + requestDto.getUserEmail());
         }
 
-        String newUserId = java.util.UUID.randomUUID().toString();
+        String newUserId = UUID.randomUUID().toString();
         String encodedPassword = passwordEncoder.encode(requestDto.getPassword());
         String generatedOtp = generateOTP();
 
@@ -77,58 +64,65 @@ public class UserServiceImpl implements UserService {
                 generatedOtp
         );
 
-        EmailNotificationDto emailDto = new EmailNotificationDto(
-                requestDto.getUserEmail(),
-                generatedOtp,
-                "Welcome to OpenJar - Verify Your Account"
+        EmailNotificationDto emailDto = constructWelcomeEmail(requestDto, generatedOtp);
+        rabbitTemplate.convertAndSend(
+                RabbitMQConfig.EXCHANGE_NAME,
+                RabbitMQConfig.ROUTING_KEY,
+                emailDto
         );
 
-        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, RabbitMQConfig.ROUTING_KEY, emailDto);
-
-        log.info("OTP event published to RabbitMQ for {}", requestDto.getUserEmail());
+        log.info("Registration successful. OTP sent to {}", requestDto.getUserEmail());
     }
 
     @Override
+    @Transactional
+    public void updateUser(String id, UserRequestDto request) {
+        userRepository.findUserByIdNative(id).orElseThrow(() ->
+                new ResourceNotFoundException("Update failed. User ID " + id + " not found.")
+        );
+
+        userRepository.updateUserNative(id, request.getUserName(), request.getUserEmail());
+        log.info("User {} updated.", id);
+    }
+
+    @Override
+    @Transactional
+    public void deleteUser(String id) {
+        userRepository.findUserByIdNative(id).orElseThrow(() ->
+                new ResourceNotFoundException("Deletion failed. User ID " + id + " not found.")
+        );
+
+        userRepository.deleteUserNative(id);
+        log.info("User {} deleted.", id);
+    }
+
+    @Override
+    @Transactional
     public boolean verifyAccount(String email, String otp) {
         int updatedRows = userRepository.verifyUserNative(email, otp);
 
         if (updatedRows > 0) {
-            log.info("✅ SUCCESS: Account successfully verified for {}", email);
+            log.info("Account verified for {}", email);
             return true;
         } else {
-            log.warn("❌ VERIFICATION FAILED: Invalid OTP attempt for {}", email);
-            return false;
+            throw new InvalidOtpException("The OTP provided for " + email + " is incorrect or expired.");
         }
     }
 
-
-    @Override
-    public void updateUser(String id, UserRequestDto request) {
-        log.info("Attempting to update user with ID: {}", id);
-
-        userRepository.findUserByIdNative(id).orElseThrow(() -> {
-            log.error("Update failed. User not found with ID: {}", id);
-            return new ResourceNotFoundException("User not found with id: " + id);
-        });
-
-        userRepository.updateUserNative(id, request.getUserName(), request.getUserEmail());
-        log.info("User updated successfully with ID: {}", id);
+    private String generateOTP() {
+        SecureRandom random = new SecureRandom();
+        return String.format("%06d", random.nextInt(1000000));
     }
 
-    @Override
-    public void deleteUser(String id) {
-        log.info("Attempting to delete user with ID: {}", id);
-
-        userRepository.findUserByIdNative(id).orElseThrow(() -> {
-            log.error("Deletion failed. User not found with ID: {}", id);
-            return new ResourceNotFoundException("User not found with id: " + id);
-        });
-
-        userRepository.deleteUserNative(id);
-        log.info("User deleted successfully with ID: {}", id);
+    private EmailNotificationDto constructWelcomeEmail(UserRequestDto requestDto, String otp) {
+        String body = "Hi " + requestDto.getUserName() + ",\n\n" +
+                "Welcome to OpenJar! Your verification OTP is: " + otp + "\n\n" +
+                "Happy Cooking!";
+        return new EmailNotificationDto(requestDto.getUserEmail(), body, "Verify Your OpenJar Account");
     }
 
     private UserResponseDto mapToResponseDto(User user) {
+
         UserResponseDto dto = new UserResponseDto();
         dto.setUserId(user.getUserId());
         dto.setUserName(user.getUserName());

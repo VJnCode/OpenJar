@@ -33,7 +33,7 @@ public interface UserRepository extends JpaRepository<User, String> {
             @Param("userName") String userName,
             @Param("userEmail") String userEmail,
             @Param("password") String password,
-            @Param("otp") String otp  // <--- Added OTP parameter
+            @Param("otp") String otp
     );
 
     @Modifying

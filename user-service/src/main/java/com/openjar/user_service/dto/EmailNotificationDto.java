@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class EmailNotificationDto {
-    private String email;
-    private String otp;
+    private String userEmail;
+    private String messageBody;
     private String subject;
 }

@@ -1,47 +1,67 @@
 package com.openjar.socialservice.sevice;
 
-import com.openjar.socialservice.Repository.CommentRepository;
+
 import com.openjar.socialservice.dto.CommentRequestDto;
 import com.openjar.socialservice.dto.CommentResponseDto;
-import com.openjar.socialservice.models.Comment;
+import com.openjar.socialservice.dto.RecipeNotificationDto;
+import com.openjar.socialservice.dto.RecipeResponseDto;
+import com.openjar.socialservice.repository.CommentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.reactive.function.client.WebClient;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class CommentServiceImpl implements CommentService {
+
     private final CommentRepository commentRepository;
     private final RabbitTemplate rabbitTemplate;
+    private final WebClient.Builder webClientBuilder;
 
     @Override
+    @Transactional
     public void postComment(CommentRequestDto requestDto) {
-        String newId = java.util.UUID.randomUUID().toString();
+        log.info("Processing comment for Recipe: {}...", requestDto.getRecipeId());
 
-        commentRepository.insertCommentNative(
-                newId,
-                requestDto.getRecipeId(),
-                requestDto.getUserId(),
-                requestDto.getContent()
-        );
-
-        Map<String, String> emailData = new HashMap<>();
-        emailData.put("recipientEmail", "varun@example.com"); // Hardcoded for now
-        emailData.put("subject", "New Comment on your Recipe!");
-        emailData.put("messageBody", "User " + requestDto.getUserId() + " commented: " + requestDto.getContent());
+        String generatedId = java.util.UUID.randomUUID().toString();
 
         try {
-            rabbitTemplate.convertAndSend("notification_exchange", "notification_routing_key", emailData);
-            log.info("Successfully queued notification for comment ID: {}", newId);
+            commentRepository.insertCommentNative(
+                    generatedId,
+                    requestDto.getRecipeId(),
+                    requestDto.getUserId(),
+                    requestDto.getContent()
+            );
+
+            RecipeResponseDto recipe = webClientBuilder.build()
+                    .get()
+                    .uri("http://localhost:8080/recipe/{id}", requestDto.getRecipeId())
+                    .retrieve()
+                    .bodyToMono(RecipeResponseDto.class)
+                    .block();
+
+            if (recipe != null && recipe.getUserId() != null) {
+                log.info("Recipe Owner: {}", recipe.getUserId());
+
+                RecipeNotificationDto notification = new RecipeNotificationDto(
+                        "varunraj9790@gmail.com",
+                        "New Comment Alert",
+                        "Someone commented on your recipe: " + requestDto.getContent()
+                );
+
+                rabbitTemplate.convertAndSend("openjar_exchange", "notification_routing_key", notification);
+                log.info("Notification queued.");
+            }
         } catch (Exception e) {
-            log.error("RabbitMQ Down: Comment saved, but notification failed: {}", e.getMessage());
+            log.error("Flow Error: {}", e.getMessage());
+            throw new RuntimeException("Flow failed");
         }
     }
 
@@ -49,12 +69,12 @@ public class CommentServiceImpl implements CommentService {
     public List<CommentResponseDto> getCommentsByRecipe(String recipeId) {
         return commentRepository.findByRecipeIdNative(recipeId).stream()
                 .map(comment -> CommentResponseDto.builder()
-                        .id(comment.getId()) // String to String - perfect!
+                        .id(comment.getCommentId())
                         .recipeId(comment.getRecipeId())
                         .userId(comment.getUserId())
                         .content(comment.getContent())
                         .createdAt(comment.getCreatedAt())
                         .build())
-                .toList();
+                .collect(Collectors.toList());
     }
 }

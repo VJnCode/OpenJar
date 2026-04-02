@@ -13,6 +13,4 @@ public class RecipeRequestDto {
         private String recipeInstructions;
         private String recipeImageUrl;
         private String userId;
-
-
 }

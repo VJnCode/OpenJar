@@ -9,11 +9,10 @@ services:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: OpenJar
     ports:
-      - "3307:3306" # Maps your PC's port 3307 to the container's 3306
+      - "3307:3306"
     volumes:
       - mysql-data:/var/lib/mysql # Saves your data so it isn't lost on restart
 
-  # 2. Your Spring Boot Container
   user-service:
     build: .
     container_name: openjar-user-service

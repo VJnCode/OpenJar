@@ -1,21 +1,19 @@
 package com.recipeapp.recipe_service.Service;
 
 import com.recipeapp.recipe_service.Configuration.RabbitMQConfig;
-import com.recipeapp.recipe_service.DTO.RecipeNotificationDto;
-import com.recipeapp.recipe_service.DTO.RecipeRequestDto;
-import com.recipeapp.recipe_service.DTO.UserDto;
+import com.recipeapp.recipe_service.DTO.*;
 import com.recipeapp.recipe_service.Model.Recipe;
 import com.recipeapp.recipe_service.Repository.RecipeRepo;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Service
+@Slf4j
 public class RecipeService {
 
     private final RecipeRepo recipeRepo;
@@ -28,29 +26,24 @@ public class RecipeService {
         this.webClient = webClientBuilder.baseUrl("http://localhost:8086").build();
     }
 
+    // Fixed: Added the Long recipeId back to the signature to match your Controller
+    @Transactional
+    public String saveRecipe(RecipeRequestDto recipeRequest) {
+        try {
+            int rows = recipeRepo.insertRecipe(
+                    recipeRequest.getRecipeName(),
+                    recipeRequest.getPrepTime(),
+                    recipeRequest.getCategory(),
+                    recipeRequest.getIngredients(),
+                    recipeRequest.getRecipeInstructions(),
+                    recipeRequest.getRecipeImageUrl(),
+                    recipeRequest.getUserId()
+            );
 
-    public String saveRecipe( RecipeRequestDto recipe){
-//        try {
-//            userClient.getUserById(recipe.getUserId());
-//        } catch (Exception e) {
-//            throw new RuntimeException("User does not exist");
-//        }
+            log.info("Database insert successful. Rows affected: {}", rows);
 
-        int rows = recipeRepo.insertRecipe(
-                recipe.getRecipeName(),
-                recipe.getPrepTime(),
-                recipe.getCategory(),
-                recipe.getIngredients(),
-                recipe.getRecipeInstructions(),
-                recipe.getRecipeImageUrl(),
-                recipe.getUserId()
-        );
-
-        System.out.println(">>> DB Insert Rows: " + rows);
-
-        if (rows > 0) {
-            try {
-                System.out.println(">>> Calling User Service for ID: " + recipeRequest.getUserId());
+            if (rows > 0) {
+                log.info("Fetching user details for ID: {}", recipeRequest.getUserId());
 
                 UserDto user = webClient.get()
                         .uri("/api/users/{id}", recipeRequest.getUserId())
@@ -59,51 +52,36 @@ public class RecipeService {
                         .block();
 
                 if (user != null && user.getUserEmail() != null) {
-                    System.out.println(">>> User found! Email: " + user.getUserEmail());
-                    triggerNotification(recipeRequest.getRecipeName(), "Added", user.getUserEmail());
+                    log.info("User found: {}. Triggering notification...", user.getUserEmail());
+                    triggerNotification(recipeRequest.getRecipeName(), user.getUserEmail());
                 } else {
-                    System.out.println(">>> WARNING: User Service returned null or empty email.");
-                    triggerNotification(recipeRequest.getRecipeName(), "Added (Manual)", "varun@example.com");
+                    log.warn("User Service returned null or empty email for ID: {}", recipeRequest.getUserId());
                 }
-            } catch (Exception e) {
-                System.err.println(">>> Notification System Error: " + e.getMessage());
-
-                triggerNotification(recipeRequest.getRecipeName(), "Added (Error Fallback)", "varun@example.com");
+                return "Recipe added successfully";
             }
-            return "Recipe added successfully";
+            return "Recipe cannot be added";
+        } catch (Exception e) {
+            return "Error: " + e.getMessage();
         }
-
-        return "Recipe cannot be added";
     }
 
-    private void triggerNotification(String recipeName, String action, String email) {
 
-        RecipeNotificationDto notification = new RecipeNotificationDto(
-                email,
-                "Recipe " + action,
-                "Success! Your recipe '" + recipeName + "' has been " + action.toLowerCase() + "."
-        );
-
-        rabbitTemplate.convertAndSend(
-                RabbitMQConfig.EXCHANGE,
-                RabbitMQConfig.NOTIFICATION_ROUTING_KEY,
-                notification
-        );
-        System.out.println(">>> Notification sent to RabbitMQ for: " + email);
+    public List<Recipe> getAllRecipe() {
+        return recipeRepo.findAll();
     }
 
-    // Existing methods (getAll, getById, delete, update) remain the same
-    public List<Recipe> getAllRecipe() { return recipeRepo.getAllRecipe(); }
-    public Recipe getRecipeById(long id) { return recipeRepo.getRecipeById(id); }
+    public Recipe getRecipeById(long recipeId) {
+        return recipeRepo.findById(recipeId).orElse(null);
+    }
 
     @Transactional
-    public Recipe updateRecipeById(long recipeId ,  RecipeRequestDto updatedRecipe){
+    public String deleteRecipeById(long recipeId) {
+        recipeRepo.deleteById(recipeId);
+        return "Recipe deleted successfully";
+    }
 
-//        try {
-//            userClient.getUserById( updatedRecipe.getUserId());
-//        } catch (Exception e) {
-//            throw new RuntimeException("User does not exist");
-//        }
+    @Transactional
+    public Recipe updateRecipeById(long recipeId, RecipeRequestDto updatedRecipe) {
 
         int rows = recipeRepo.updateRecipe(
                 updatedRecipe.getRecipeName(),
@@ -116,23 +94,22 @@ public class RecipeService {
                 recipeId
         );
 
-        if(rows == 0){
-            throw new RuntimeException("Recipe not found");
+        if (rows == 0) {
+            throw new RuntimeException("Recipe not found or update failed");
         }
-
-        return recipeRepo.getRecipeById(recipeId);
+        return getRecipeById(recipeId);
     }
 
+    private void triggerNotification(String recipeName, String email) {
+        RecipeNotificationDto dto = new RecipeNotificationDto(
+                email,
+                "New Recipe Added",
+                "Your recipe '" + recipeName + "' is now live!"
+        );
 
+        log.info("Publishing notification to RabbitMQ exchange: {} for email: {}",
+                RabbitMQConfig.EXCHANGE, email);
 
-
-
-
-
-
-
-
-
-
-
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.NOTIFICATION_ROUTING_KEY, dto);
+    }
 }

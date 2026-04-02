@@ -1,19 +1,23 @@
 package com.recipeapp.recipe_service.Service;
 
 import com.recipeapp.recipe_service.Configuration.RabbitMQConfig;
-import com.recipeapp.recipe_service.DTO.*;
+import com.recipeapp.recipe_service.DTO.RecipeNotificationDto;
+import com.recipeapp.recipe_service.DTO.RecipeRequestDto;
+import com.recipeapp.recipe_service.DTO.UserDto;
 import com.recipeapp.recipe_service.Model.Recipe;
 import com.recipeapp.recipe_service.Repository.RecipeRepo;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.slf4j.Slf4j; // 1. Added Slf4j annotation
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 
 @Service
-@Slf4j
+@Slf4j // 2. This creates the 'log' object automatically via Lombok
 public class RecipeService {
 
     private final RecipeRepo recipeRepo;
@@ -26,13 +30,9 @@ public class RecipeService {
         this.webClient = webClientBuilder.baseUrl("http://localhost:8086").build();
     }
 
-
-    public String saveRecipe( RecipeRequestDto recipe, String userId){
-//        try {
-//            userClient.getUserById(recipe.getUserId());
-//        } catch (Exception e) {
-//            throw new RuntimeException("User does not exist");
-//        }
+    @Transactional
+    public String saveRecipe(RecipeRequestDto recipe, String userId) {
+        log.info("Process started: Saving recipe for User ID: {}", userId);
 
         int rows = recipeRepo.insertRecipe(
                 recipe.getRecipeName(),
@@ -41,73 +41,94 @@ public class RecipeService {
                 recipe.getIngredients(),
                 recipe.getRecipeInstructions(),
                 recipe.getRecipeImageUrl(),
-               userId
+                userId
         );
 
-            log.info("Database insert successful. Rows affected: {}", rows);
+        if (rows > 0) {
+            log.info("Recipe saved to DB. Fetching owner email from User-Service...");
 
-            if (rows > 0) {
-                log.info("Fetching user details for ID: {}", recipeRequest.getUserId());
-
+            try {
                 UserDto user = webClient.get()
                         .uri("/api/users/{id}", userId)
                         .retrieve()
+                        .onStatus(HttpStatusCode::is4xxClientError, response -> {
+                            log.error("User not found in User-Service for ID: {}", userId);
+                            return Mono.error(new RuntimeException("User validation failed"));
+                        })
                         .bodyToMono(UserDto.class)
                         .block();
 
                 if (user != null && user.getUserEmail() != null) {
-                    log.info("User found: {}. Triggering notification...", user.getUserEmail());
-                    triggerNotification(recipeRequest.getRecipeName(), user.getUserEmail());
+                    log.info("User Email retrieved: {}. Sending to RabbitMQ...", user.getUserEmail());
+
+                    triggerNotification(recipe.getRecipeName(), "Added", user.getUserEmail());
+
+                    return "Recipe added successfully for " + user.getUserEmail();
                 } else {
-                    log.warn("User Service returned null or empty email for ID: {}", recipeRequest.getUserId());
+                    log.error("User Service returned null for ID: {}", userId);
+                    throw new RuntimeException("Could not retrieve user email");
                 }
-                return "Recipe added successfully";
+
+            } catch (Exception e) {
+                log.error("Communication Error with User-Service: {}", e.getMessage());
+                // In a production app, you might want to rollback the recipe save here
+                // if the user doesn't actually exist.
+                throw new RuntimeException("Failed to verify user: " + e.getMessage());
             }
-            return "Recipe cannot be added";
-        } catch (Exception e) {
-            return "Error: " + e.getMessage();
         }
+
+        return "Database error: Recipe could not be saved.";
     }
 
+    private void triggerNotification(String recipeName, String action, String email) {
+        RecipeNotificationDto notification = new RecipeNotificationDto(
+                email,
+                "Recipe " + action,
+                "Success! Your recipe '" + recipeName + "' has been " + action.toLowerCase() + "."
+        );
+
+        log.debug("Sending message to Exchange: {}, RoutingKey: {}",
+                RabbitMQConfig.EXCHANGE, RabbitMQConfig.NOTIFICATION_ROUTING_KEY);
+
+        rabbitTemplate.convertAndSend(
+                RabbitMQConfig.EXCHANGE,
+                RabbitMQConfig.NOTIFICATION_ROUTING_KEY,
+                notification
+        );
+        log.info("Message successfully queued for: {}", email);
+    }
 
     public List<Recipe> getAllRecipe() {
-        return recipeRepo.findAll();
+        log.info("Fetching all recipes...");
+        return recipeRepo.getAllRecipe();
     }
 
-    public Recipe getRecipeById(long recipeId) {
-        return recipeRepo.findById(recipeId).orElse(null);
-    }
-
-// added the deleteRecipe option
-    @Transactional
-    public String deleteRecipeById(long recipeId){
-
-        Recipe recipe = recipeRepo.getRecipeById(recipeId);
-
-        if(recipe == null){
-            throw new RuntimeException("Recipe not found");
-        }
-
-        int rows = recipeRepo.deleteRecipeById(recipeId);
-
-        if(rows > 0){
-            return "Recipe deleted successfully";
-        } else {
-            return "Recipe was not deleted";
-        }
+    public Recipe getRecipeById(long id) {
+        log.info("Fetching recipe details for ID: {}", id);
+        return recipeRepo.getRecipeById(id);
     }
 
     @Transactional
     public String deleteRecipeById(long recipeId) {
-        recipeRepo.deleteById(recipeId);
-        return "Recipe deleted successfully";
+        log.info("Initiating deletion for Recipe ID: {}", recipeId);
+        Recipe recipe = recipeRepo.getRecipeById(recipeId);
+
+        if (recipe == null) {
+            log.warn("Delete aborted. Recipe ID {} does not exist.", recipeId);
+            throw new RuntimeException("Recipe not found");
+        }
+
+        int rows = recipeRepo.deleteRecipeById(recipeId);
+        if (rows > 0) {
+            log.info("Successfully deleted Recipe ID: {}", recipeId);
+            return "Recipe deleted successfully";
+        }
+        return "Recipe was not deleted";
     }
 
     @Transactional
-    public Recipe updateRecipeById(long recipeId, RecipeRequestDto updatedRecipe) {
-    public Recipe updateRecipeById(long recipeId ,  RecipeRequestDto updatedRecipe , String userId){
-
-
+    public Recipe updateRecipeById(long recipeId, RecipeRequestDto updatedRecipe, String userId) {
+        log.info("Updating Recipe ID: {} for User ID: {}", recipeId, userId);
 
         int rows = recipeRepo.updateRecipe(
                 updatedRecipe.getRecipeName(),
@@ -121,21 +142,11 @@ public class RecipeService {
         );
 
         if (rows == 0) {
-            throw new RuntimeException("Recipe not found or update failed");
+            log.error("Update failed. Recipe ID {} not found.", recipeId);
+            throw new RuntimeException("Recipe not found");
         }
-        return getRecipeById(recipeId);
-    }
 
-    private void triggerNotification(String recipeName, String email) {
-        RecipeNotificationDto dto = new RecipeNotificationDto(
-                email,
-                "New Recipe Added",
-                "Your recipe '" + recipeName + "' is now live!"
-        );
-
-        log.info("Publishing notification to RabbitMQ exchange: {} for email: {}",
-                RabbitMQConfig.EXCHANGE, email);
-
-        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.NOTIFICATION_ROUTING_KEY, dto);
+        log.info("Update successful for Recipe ID: {}", recipeId);
+        return recipeRepo.getRecipeById(recipeId);
     }
 }

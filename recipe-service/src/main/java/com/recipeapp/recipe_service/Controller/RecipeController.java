@@ -19,15 +19,16 @@ public class RecipeController {
         this.service=service;
     }
 
-    @PostMapping
+    @PostMapping("/{userId}")
     public ResponseEntity<?> saveRecipe(@RequestBody RecipeRequestDto recipe,
                                         @PathVariable String userId){
 //        recipe.setUserId(userId);
-      String response=  service.saveRecipe(recipe);
+        String response=  service.saveRecipe(recipe, userId);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body("Recipe added successfully");
     }
+
 
     @GetMapping
     public ResponseEntity<?>getAllRecipe(){

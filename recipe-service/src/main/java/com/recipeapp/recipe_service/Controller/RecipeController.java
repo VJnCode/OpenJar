@@ -20,7 +20,8 @@ public class RecipeController {
     }
 
     @PostMapping
-    public ResponseEntity<?> saveRecipe(@RequestBody RecipeRequestDto recipe){
+    public ResponseEntity<?> saveRecipe(@RequestBody RecipeRequestDto recipe,
+                                        @PathVariable String userId){
 //        recipe.setUserId(userId);
       String response=  service.saveRecipe(recipe);
         return ResponseEntity
@@ -48,8 +49,9 @@ public class RecipeController {
 
 
     @PutMapping("/{recipeId}")
-    public ResponseEntity<?> updateRecipeById(@PathVariable long recipeId , @RequestBody  RecipeRequestDto updatedRecipe){
-        Recipe resposne =service.updateRecipeById(recipeId , updatedRecipe);
+    public ResponseEntity<?> updateRecipeById(@PathVariable long recipeId , @RequestBody  RecipeRequestDto updatedRecipe,
+                                              @PathVariable String userId){
+        Recipe resposne =service.updateRecipeById(recipeId , updatedRecipe,userId);
         return ResponseEntity.ok(resposne);
     }
 

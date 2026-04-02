@@ -26,19 +26,23 @@ public class RecipeService {
         this.webClient = webClientBuilder.baseUrl("http://localhost:8086").build();
     }
 
-    // Fixed: Added the Long recipeId back to the signature to match your Controller
-    @Transactional
-    public String saveRecipe(RecipeRequestDto recipeRequest) {
-        try {
-            int rows = recipeRepo.insertRecipe(
-                    recipeRequest.getRecipeName(),
-                    recipeRequest.getPrepTime(),
-                    recipeRequest.getCategory(),
-                    recipeRequest.getIngredients(),
-                    recipeRequest.getRecipeInstructions(),
-                    recipeRequest.getRecipeImageUrl(),
-                    recipeRequest.getUserId()
-            );
+
+    public String saveRecipe( RecipeRequestDto recipe, String userId){
+//        try {
+//            userClient.getUserById(recipe.getUserId());
+//        } catch (Exception e) {
+//            throw new RuntimeException("User does not exist");
+//        }
+
+        int rows = recipeRepo.insertRecipe(
+                recipe.getRecipeName(),
+                recipe.getPrepTime(),
+                recipe.getCategory(),
+                recipe.getIngredients(),
+                recipe.getRecipeInstructions(),
+                recipe.getRecipeImageUrl(),
+               userId
+        );
 
             log.info("Database insert successful. Rows affected: {}", rows);
 
@@ -46,7 +50,7 @@ public class RecipeService {
                 log.info("Fetching user details for ID: {}", recipeRequest.getUserId());
 
                 UserDto user = webClient.get()
-                        .uri("/api/users/{id}", recipeRequest.getUserId())
+                        .uri("/api/users/{id}", userId)
                         .retrieve()
                         .bodyToMono(UserDto.class)
                         .block();
@@ -74,6 +78,25 @@ public class RecipeService {
         return recipeRepo.findById(recipeId).orElse(null);
     }
 
+// added the deleteRecipe option
+    @Transactional
+    public String deleteRecipeById(long recipeId){
+
+        Recipe recipe = recipeRepo.getRecipeById(recipeId);
+
+        if(recipe == null){
+            throw new RuntimeException("Recipe not found");
+        }
+
+        int rows = recipeRepo.deleteRecipeById(recipeId);
+
+        if(rows > 0){
+            return "Recipe deleted successfully";
+        } else {
+            return "Recipe was not deleted";
+        }
+    }
+
     @Transactional
     public String deleteRecipeById(long recipeId) {
         recipeRepo.deleteById(recipeId);
@@ -82,6 +105,9 @@ public class RecipeService {
 
     @Transactional
     public Recipe updateRecipeById(long recipeId, RecipeRequestDto updatedRecipe) {
+    public Recipe updateRecipeById(long recipeId ,  RecipeRequestDto updatedRecipe , String userId){
+
+
 
         int rows = recipeRepo.updateRecipe(
                 updatedRecipe.getRecipeName(),
@@ -90,7 +116,7 @@ public class RecipeService {
                 updatedRecipe.getIngredients(),
                 updatedRecipe.getRecipeInstructions(),
                 updatedRecipe.getRecipeImageUrl(),
-                updatedRecipe.getUserId(),
+                userId,
                 recipeId
         );
 

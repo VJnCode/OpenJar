@@ -29,7 +29,7 @@ public class RecipeService {
     }
 
 
-    public String saveRecipe( RecipeRequestDto recipe){
+    public String saveRecipe( RecipeRequestDto recipe, String userId){
 //        try {
 //            userClient.getUserById(recipe.getUserId());
 //        } catch (Exception e) {
@@ -43,32 +43,32 @@ public class RecipeService {
                 recipe.getIngredients(),
                 recipe.getRecipeInstructions(),
                 recipe.getRecipeImageUrl(),
-                recipe.getUserId()
+               userId
         );
 
         System.out.println(">>> DB Insert Rows: " + rows);
 
         if (rows > 0) {
-            try {
-                System.out.println(">>> Calling User Service for ID: " + recipeRequest.getUserId());
+            try {//changed the way we get userId from dto to pathVariable
+                System.out.println(">>> Calling User Service for ID: " + userId);
 
                 UserDto user = webClient.get()
-                        .uri("/api/users/{id}", recipeRequest.getUserId())
+                        .uri("/api/users/{id}", userId)
                         .retrieve()
                         .bodyToMono(UserDto.class)
                         .block();
 
                 if (user != null && user.getUserEmail() != null) {
                     System.out.println(">>> User found! Email: " + user.getUserEmail());
-                    triggerNotification(recipeRequest.getRecipeName(), "Added", user.getUserEmail());
+                    triggerNotification(recipe.getRecipeName(), "Added", user.getUserEmail());
                 } else {
                     System.out.println(">>> WARNING: User Service returned null or empty email.");
-                    triggerNotification(recipeRequest.getRecipeName(), "Added (Manual)", "varun@example.com");
+                    triggerNotification(recipe.getRecipeName(), "Added (Manual)", "varun@example.com");
                 }
             } catch (Exception e) {
                 System.err.println(">>> Notification System Error: " + e.getMessage());
 
-                triggerNotification(recipeRequest.getRecipeName(), "Added (Error Fallback)", "varun@example.com");
+                triggerNotification(recipe.getRecipeName(), "Added (Error Fallback)", "varun@example.com");
             }
             return "Recipe added successfully";
         }
@@ -96,14 +96,29 @@ public class RecipeService {
     public List<Recipe> getAllRecipe() { return recipeRepo.getAllRecipe(); }
     public Recipe getRecipeById(long id) { return recipeRepo.getRecipeById(id); }
 
+// added the deleteRecipe option
     @Transactional
-    public Recipe updateRecipeById(long recipeId ,  RecipeRequestDto updatedRecipe){
+    public String deleteRecipeById(long recipeId){
 
-//        try {
-//            userClient.getUserById( updatedRecipe.getUserId());
-//        } catch (Exception e) {
-//            throw new RuntimeException("User does not exist");
-//        }
+        Recipe recipe = recipeRepo.getRecipeById(recipeId);
+
+        if(recipe == null){
+            throw new RuntimeException("Recipe not found");
+        }
+
+        int rows = recipeRepo.deleteRecipeById(recipeId);
+
+        if(rows > 0){
+            return "Recipe deleted successfully";
+        } else {
+            return "Recipe was not deleted";
+        }
+    }
+
+    @Transactional
+    public Recipe updateRecipeById(long recipeId ,  RecipeRequestDto updatedRecipe , String userId){
+
+
 
         int rows = recipeRepo.updateRecipe(
                 updatedRecipe.getRecipeName(),
@@ -112,7 +127,7 @@ public class RecipeService {
                 updatedRecipe.getIngredients(),
                 updatedRecipe.getRecipeInstructions(),
                 updatedRecipe.getRecipeImageUrl(),
-                updatedRecipe.getUserId(),
+                userId,
                 recipeId
         );
 

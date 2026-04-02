@@ -25,8 +25,6 @@ public class Recipe {
     private String recipeImageUrl;
     @Column(name = "like_count")
     private long likeCount = 0;
-    //    @ManyToOne
-//    @JoinColumn(name="userId")
     private String userId;
 
 }

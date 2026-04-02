@@ -12,7 +12,8 @@ public class RecipeRequestDto {
         private String ingredients;
         private String recipeInstructions;
         private String recipeImageUrl;
-        private String userId;
+        //commented the string userId since its not needed we will get from pathVariable
+//        private String userId;
 
 
 }

@@ -18,6 +18,6 @@ public class NotificationLog {
     @Column(columnDefinition = "TEXT")
     private String content;
     
-    private String status; // SENT, FAILED
+    private String status;
     private LocalDateTime sentAt;
 }

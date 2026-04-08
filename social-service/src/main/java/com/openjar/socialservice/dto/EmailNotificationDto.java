@@ -1,11 +1,8 @@
-package com.openjar.user_service.dto;
+package com.openjar.socialservice.dto;
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
 import java.util.Map;
 
 @Data

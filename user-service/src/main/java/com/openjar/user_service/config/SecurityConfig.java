@@ -22,17 +22,17 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
-                // 1. Disable CSRF (Critical for Postman POST requests)
                 .csrf(csrf -> csrf.disable())
 
-                // 2. Explicitly permit our API paths
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+
                         .requestMatchers("/api/users/**").permitAll()
-                        .requestMatchers("/actuator/**").permitAll() // Keep this for debugging
+                        .requestMatchers("/actuator/**").permitAll()
+
                         .anyRequest().authenticated()
                 )
 
-                // 3. Ensure session management doesn't interfere
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )

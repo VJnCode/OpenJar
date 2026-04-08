@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        .wrapper { background-color: #f8f9fa; padding: 40px 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .main-card { max-width: 450px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #e1e4e8; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .header { background-color: #ff6b6b; padding: 30px; text-align: center; color: white; }
+        .body { padding: 40px 30px; text-align: center; color: #2d3436; }
+        .otp-container { margin: 30px 0; padding: 20px; background: #fff5f5; border-radius: 8px; border: 2px dashed #ff6b6b; }
+        .otp-code { font-size: 38px; font-weight: 800; letter-spacing: 6px; color: #2d3436; }
+        .footer { padding: 20px; background: #f1f3f5; text-align: center; font-size: 12px; color: #636e72; }
+        .warning { font-size: 13px; color: #a2a2a2; margin-top: 20px; }
+    </style>
+</head>
+<body>
+<div class="wrapper">
+    <div class="main-card">
+        <div class="header">
+            <h1 style="margin: 0; font-size: 24px;">OpenJar Verification</h1>
+        </div>
+        <div class="body">
+            <h2 style="margin-top: 0;">Hi <span th:text="${userName}">Chef</span>!</h2>
+            <p>Welcome to the community. Please use the code below to verify your email address and start your cooking journey.</p>
+
+            <div class="otp-container">
+                <div class="otp-code" th:text="${otp}">000000</div>
+            </div>
+
+            <p class="warning">This code is valid for 10 minutes. <br/> If you didn't request this, please ignore this email.</p>
+        </div>
+        <div class="footer">
+            &copy; 2026 OpenJar Microservices | Kavoor, Mangalore
+        </div>
+    </div>
+</div>
+</body>
+</html>

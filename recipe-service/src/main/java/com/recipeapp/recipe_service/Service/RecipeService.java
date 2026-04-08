@@ -1,21 +1,26 @@
 package com.recipeapp.recipe_service.Service;
 
 import com.recipeapp.recipe_service.Configuration.RabbitMQConfig;
+import com.recipeapp.recipe_service.DTO.EmailNotificationDto;
 import com.recipeapp.recipe_service.DTO.RecipeNotificationDto;
 import com.recipeapp.recipe_service.DTO.RecipeRequestDto;
 import com.recipeapp.recipe_service.DTO.UserDto;
 import com.recipeapp.recipe_service.Model.Recipe;
 import com.recipeapp.recipe_service.Repository.RecipeRepo;
+import lombok.extern.slf4j.Slf4j; // 1. Added Slf4j annotation
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @Service
+@Slf4j // 2. This creates the 'log' object automatically via Lombok
 public class RecipeService {
 
     private final RecipeRepo recipeRepo;
@@ -28,13 +33,9 @@ public class RecipeService {
         this.webClient = webClientBuilder.baseUrl("http://localhost:8086").build();
     }
 
-
-    public String saveRecipe( RecipeRequestDto recipe, String userId){
-//        try {
-//            userClient.getUserById(recipe.getUserId());
-//        } catch (Exception e) {
-//            throw new RuntimeException("User does not exist");
-//        }
+    @Transactional
+    public String saveRecipe(RecipeRequestDto recipe, String userId) {
+        log.info("Process started: Saving recipe for User ID: {}", userId);
 
         int rows = recipeRepo.insertRecipe(
                 recipe.getRecipeName(),
@@ -43,45 +44,45 @@ public class RecipeService {
                 recipe.getIngredients(),
                 recipe.getRecipeInstructions(),
                 recipe.getRecipeImageUrl(),
-               userId
+                userId
         );
 
-        System.out.println(">>> DB Insert Rows: " + rows);
-
         if (rows > 0) {
-            try {//changed the way we get userId from dto to pathVariable
-                System.out.println(">>> Calling User Service for ID: " + userId);
-
-                UserDto user = webClient.get()
-                        .uri("/api/users/{id}", userId)
+            try {
+                UserDto ownerProfile = webClient.get()
+                        .uri("/api/users/{id}", userId) // Calls localhost:8086/api/users/{id}
                         .retrieve()
                         .bodyToMono(UserDto.class)
                         .block();
 
-                if (user != null && user.getUserEmail() != null) {
-                    System.out.println(">>> User found! Email: " + user.getUserEmail());
-                    triggerNotification(recipe.getRecipeName(), "Added", user.getUserEmail());
-                } else {
-                    System.out.println(">>> WARNING: User Service returned null or empty email.");
-                    triggerNotification(recipe.getRecipeName(), "Added (Manual)", "varun@example.com");
+                if (ownerProfile != null && ownerProfile.getUserEmail() != null) {
+                    log.info("Successfully fetched profile for: {}", ownerProfile.getUserName());
+
+                    triggerNotification(recipe, ownerProfile);
+
+                    return "Recipe added successfully for " + ownerProfile.getUserName();
                 }
             } catch (Exception e) {
-                System.err.println(">>> Notification System Error: " + e.getMessage());
-
-                triggerNotification(recipe.getRecipeName(), "Added (Error Fallback)", "varun@example.com");
+                log.error("Failed to fetch user from Route: {}", e.getMessage());
+                throw new RuntimeException("User Service communication failed");
             }
-            return "Recipe added successfully";
         }
-
-        return "Recipe cannot be added";
+        return "Database error: Recipe could not be saved.";
     }
 
-    private void triggerNotification(String recipeName, String action, String email) {
+    private void triggerNotification(RecipeRequestDto recipe, UserDto user) {
+        Map<String, Object> model = new HashMap<>();
+        model.put("userName", user.getUserName());
+        model.put("recipeName", recipe.getRecipeName());
+        model.put("category", recipe.getCategory());
+        model.put("prepTime", recipe.getPrepTime());
+        model.put("recipeImageUrl", recipe.getRecipeImageUrl());
 
-        RecipeNotificationDto notification = new RecipeNotificationDto(
-                email,
-                "Recipe " + action,
-                "Success! Your recipe '" + recipeName + "' has been " + action.toLowerCase() + "."
+        EmailNotificationDto notification = new EmailNotificationDto(
+                user.getUserEmail(),
+                "Success! '" + recipe.getRecipeName() + "' is now on OpenJar",
+                "recipe-created", // The HTML file name
+                model
         );
 
         rabbitTemplate.convertAndSend(
@@ -89,36 +90,41 @@ public class RecipeService {
                 RabbitMQConfig.NOTIFICATION_ROUTING_KEY,
                 notification
         );
-        System.out.println(">>> Notification sent to RabbitMQ for: " + email);
+
+        log.info("Recipe creation email queued for {}", user.getUserEmail());
     }
 
-    // Existing methods (getAll, getById, delete, update) remain the same
-    public List<Recipe> getAllRecipe() { return recipeRepo.getAllRecipe(); }
-    public Recipe getRecipeById(long id) { return recipeRepo.getRecipeById(id); }
+    public List<Recipe> getAllRecipe() {
+        log.info("Fetching all recipes...");
+        return recipeRepo.getAllRecipe();
+    }
 
-// added the deleteRecipe option
+    public Recipe getRecipeById(long id) {
+        log.info("Fetching recipe details for ID: {}", id);
+        return recipeRepo.getRecipeById(id);
+    }
+
     @Transactional
-    public String deleteRecipeById(long recipeId){
-
+    public String deleteRecipeById(long recipeId) {
+        log.info("Initiating deletion for Recipe ID: {}", recipeId);
         Recipe recipe = recipeRepo.getRecipeById(recipeId);
 
-        if(recipe == null){
+        if (recipe == null) {
+            log.warn("Delete aborted. Recipe ID {} does not exist.", recipeId);
             throw new RuntimeException("Recipe not found");
         }
 
         int rows = recipeRepo.deleteRecipeById(recipeId);
-
-        if(rows > 0){
+        if (rows > 0) {
+            log.info("Successfully deleted Recipe ID: {}", recipeId);
             return "Recipe deleted successfully";
-        } else {
-            return "Recipe was not deleted";
         }
+        return "Recipe was not deleted";
     }
 
     @Transactional
-    public Recipe updateRecipeById(long recipeId ,  RecipeRequestDto updatedRecipe , String userId){
-
-
+    public Recipe updateRecipeById(long recipeId, RecipeRequestDto updatedRecipe, String userId) {
+        log.info("Updating Recipe ID: {} for User ID: {}", recipeId, userId);
 
         int rows = recipeRepo.updateRecipe(
                 updatedRecipe.getRecipeName(),
@@ -131,23 +137,12 @@ public class RecipeService {
                 recipeId
         );
 
-        if(rows == 0){
+        if (rows == 0) {
+            log.error("Update failed. Recipe ID {} not found.", recipeId);
             throw new RuntimeException("Recipe not found");
         }
 
+        log.info("Update successful for Recipe ID: {}", recipeId);
         return recipeRepo.getRecipeById(recipeId);
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
 }

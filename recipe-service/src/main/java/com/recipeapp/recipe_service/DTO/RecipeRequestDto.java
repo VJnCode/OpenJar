@@ -15,5 +15,4 @@ public class RecipeRequestDto {
         //commented the string userId since its not needed we will get from pathVariable
 //        private String userId;
 
-
 }

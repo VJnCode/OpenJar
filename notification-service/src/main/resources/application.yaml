@@ -26,7 +26,7 @@ spring:
         format_sql: true
 
   # RabbitMQ Configuration
-  rabbitmq:
+  RabbitMQ:
     host: ${RABBIT_HOST:localhost}
     port: 5672
     username: ${RABBIT_USER:guest}

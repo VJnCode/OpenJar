@@ -1,32 +1,40 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
+    <meta charset="UTF-8">
     <style>
-        .email-card { font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #eee; border-radius: 8px; overflow: hidden; }
-        .header { background: #ff5722; color: white; padding: 20px; text-align: center; }
-        .body { padding: 30px; color: #444; line-height: 1.6; }
-        .comment-box { background: #f9f9f9; padding: 15px; border-left: 4px solid #ff5722; margin: 20px 0; font-style: italic; }
-        .footer { font-size: 12px; color: #999; text-align: center; padding: 20px; }
+        .email-body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; padding: 30px; }
+        .card { max-width: 500px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .header { background-color: #ff6b6b; color: white; padding: 20px; text-align: center; }
+        .content { padding: 30px; color: #444; line-height: 1.6; }
+        .comment-box { background: #fff9f9; border-left: 4px solid #ff6b6b; padding: 15px; font-style: italic; margin: 20px 0; border-radius: 4px; }
+        .btn { display: inline-block; background: #ff6b6b; color: white !important; text-decoration: none; padding: 12px 25px; border-radius: 6px; font-weight: bold; margin-top: 10px; }
+        .footer { text-align: center; font-size: 12px; color: #999; margin-top: 20px; }
     </style>
 </head>
 <body>
-<div class="email-card">
-    <div class="header">
-        <h1>OpenJar Social</h1>
-    </div>
-    <div class="body">
-        <p>Hi Chef,</p>
-        <p>Your recipe <strong>[[${recipeName}]]</strong> is getting some love! Someone just left a comment:</p>
-
-        <div class="comment-box">
-            "[[${commentContent}]]"
+<div class="email-body">
+    <div class="card">
+        <div class="header">
+            <h2 style="margin:0;">New Interaction!</h2>
         </div>
+        <div class="body" style="padding: 30px;">
+            <p>Hi <span th:text="${ownerName}" style="font-weight: bold;">Chef</span>,</p>
+            <p>Someone just shared their thoughts on your recipe <strong>"<span th:text="${recipeTitle}">Recipe</span>"</strong>:</p>
 
-        <p>Head over to OpenJar to join the conversation!</p>
-        <p>Happy Cooking,<br><strong>The OpenJar Team</strong></p>
-    </div>
-    <div class="footer">
-        Sent from OpenJar Microservices • 2026
+            <div class="comment-box">
+                "<span th:text="${commentContent}">This looks delicious!</span>"
+            </div>
+
+            <p>Check out the conversation and reply to your fellow chef!</p>
+            <div style="text-align: center;">
+                <a th:href="${recipeUrl}" class="btn">View Comment</a>
+            </div>
+        </div>
+        <div class="footer">
+            Sent via OpenJar Social Service <br/>
+            Kavoor, Mangalore
+        </div>
     </div>
 </div>
 </body>

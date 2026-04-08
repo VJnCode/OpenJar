@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <style>
+        .container { font-family: 'Segoe UI', sans-serif; max-width: 550px; margin: 0 auto; border: 1px solid #eee; border-radius: 12px; overflow: hidden; }
+        .header { background: #4CAF50; color: white; padding: 30px; text-align: center; }
+        .content { padding: 30px; line-height: 1.6; color: #333; }
+        .recipe-preview { border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin: 20px 0; background: #fafafa; display: flex; align-items: center; }
+        .recipe-img { width: 80px; height: 80px; object-fit: cover; border-radius: 6px; margin-right: 15px; }
+        .footer { background: #f4f4f4; padding: 15px; text-align: center; font-size: 12px; color: #777; }
+        .badge { background: #e8f5e9; color: #2e7d32; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1 style="margin:0;">Recipe Published!</h1>
+    </div>
+    <div class="content">
+        <p>Hi <span th:text="${userName}" style="font-weight: bold;">Chef</span>,</p>
+        <p>Great news! Your latest creation has been successfully added to OpenJar. It's now live for the community to discover.</p>
+
+        <div class="recipe-preview">
+            <img th:if="${recipeImageUrl}" th:src="${recipeImageUrl}" class="recipe-img" alt="Recipe"/>
+            <div>
+                <span class="badge" th:text="${category}">Category</span>
+                <h3 style="margin: 5px 0;" th:text="${recipeName}">Recipe Name</h3>
+                <small th:text="'Prep Time: ' + ${prepTime}">Time</small>
+            </div>
+        </div>
+
+        <p>Check it out on your profile to see how many likes it's getting!</p>
+    </div>
+    <div class="footer">
+        Cooking is an art, and you're the artist! <br/>
+        &copy; 2026 OpenJar Microservices | Mangalore
+    </div>
+</div>
+</body>
+</html>

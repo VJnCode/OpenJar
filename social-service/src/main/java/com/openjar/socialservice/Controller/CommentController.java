@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/social/comments")
@@ -25,7 +26,19 @@ public class CommentController {
 
     @GetMapping("/recipe/{recipeId}")
     public ResponseEntity<List<CommentResponseDto>> getCommentsByRecipe(@PathVariable String recipeId) {
-        // The service now returns DTOs, so this matches perfectly
+
         return ResponseEntity.ok(commentService.getCommentsByRecipe(recipeId));
+    }
+
+    @PostMapping("/{recipeId}/{parentId}")
+    public ResponseEntity<String> saveReply(
+            @PathVariable String recipeId,
+            @PathVariable String parentId,
+            @RequestBody CommentRequestDto dto,
+            @RequestHeader("X-User-Id") String userId) {
+
+        commentService.postReply(dto, recipeId, parentId, userId);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body("Reply posted successfully!");
     }
 }

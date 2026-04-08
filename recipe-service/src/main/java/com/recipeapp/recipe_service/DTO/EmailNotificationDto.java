@@ -1,4 +1,4 @@
-package com.openjar.notificationservice.dto;
+package com.recipeapp.recipe_service.DTO;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

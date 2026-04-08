@@ -1,6 +1,7 @@
 package com.recipeapp.recipe_service.Service;
 
 import com.recipeapp.recipe_service.Configuration.RabbitMQConfig;
+import com.recipeapp.recipe_service.DTO.EmailNotificationDto;
 import com.recipeapp.recipe_service.DTO.RecipeNotificationDto;
 import com.recipeapp.recipe_service.DTO.RecipeRequestDto;
 import com.recipeapp.recipe_service.DTO.UserDto;
@@ -14,7 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Slf4j // 2. This creates the 'log' object automatically via Lombok
@@ -45,57 +48,50 @@ public class RecipeService {
         );
 
         if (rows > 0) {
-            log.info("Recipe saved to DB. Fetching owner email from User-Service...");
-
             try {
-                UserDto user = webClient.get()
-                        .uri("/api/users/{id}", userId)
+                UserDto ownerProfile = webClient.get()
+                        .uri("/api/users/{id}", userId) // Calls localhost:8086/api/users/{id}
                         .retrieve()
-                        .onStatus(HttpStatusCode::is4xxClientError, response -> {
-                            log.error("User not found in User-Service for ID: {}", userId);
-                            return Mono.error(new RuntimeException("User validation failed"));
-                        })
                         .bodyToMono(UserDto.class)
                         .block();
 
-                if (user != null && user.getUserEmail() != null) {
-                    log.info("User Email retrieved: {}. Sending to RabbitMQ...", user.getUserEmail());
+                if (ownerProfile != null && ownerProfile.getUserEmail() != null) {
+                    log.info("Successfully fetched profile for: {}", ownerProfile.getUserName());
 
-                    triggerNotification(recipe.getRecipeName(), "Added", user.getUserEmail());
+                    triggerNotification(recipe, ownerProfile);
 
-                    return "Recipe added successfully for " + user.getUserEmail();
-                } else {
-                    log.error("User Service returned null for ID: {}", userId);
-                    throw new RuntimeException("Could not retrieve user email");
+                    return "Recipe added successfully for " + ownerProfile.getUserName();
                 }
-
             } catch (Exception e) {
-                log.error("Communication Error with User-Service: {}", e.getMessage());
-                // In a production app, you might want to rollback the recipe save here
-                // if the user doesn't actually exist.
-                throw new RuntimeException("Failed to verify user: " + e.getMessage());
+                log.error("Failed to fetch user from Route: {}", e.getMessage());
+                throw new RuntimeException("User Service communication failed");
             }
         }
-
         return "Database error: Recipe could not be saved.";
     }
 
-    private void triggerNotification(String recipeName, String action, String email) {
-        RecipeNotificationDto notification = new RecipeNotificationDto(
-                email,
-                "Recipe " + action,
-                "Success! Your recipe '" + recipeName + "' has been " + action.toLowerCase() + "."
-        );
+    private void triggerNotification(RecipeRequestDto recipe, UserDto user) {
+        Map<String, Object> model = new HashMap<>();
+        model.put("userName", user.getUserName());
+        model.put("recipeName", recipe.getRecipeName());
+        model.put("category", recipe.getCategory());
+        model.put("prepTime", recipe.getPrepTime());
+        model.put("recipeImageUrl", recipe.getRecipeImageUrl());
 
-        log.debug("Sending message to Exchange: {}, RoutingKey: {}",
-                RabbitMQConfig.EXCHANGE, RabbitMQConfig.NOTIFICATION_ROUTING_KEY);
+        EmailNotificationDto notification = new EmailNotificationDto(
+                user.getUserEmail(),
+                "Success! '" + recipe.getRecipeName() + "' is now on OpenJar",
+                "recipe-created", // The HTML file name
+                model
+        );
 
         rabbitTemplate.convertAndSend(
                 RabbitMQConfig.EXCHANGE,
                 RabbitMQConfig.NOTIFICATION_ROUTING_KEY,
                 notification
         );
-        log.info("Message successfully queued for: {}", email);
+
+        log.info("Recipe creation email queued for {}", user.getUserEmail());
     }
 
     public List<Recipe> getAllRecipe() {

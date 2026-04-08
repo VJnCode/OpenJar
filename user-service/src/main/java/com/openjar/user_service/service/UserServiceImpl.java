@@ -20,6 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -65,13 +67,14 @@ public class UserServiceImpl implements UserService {
         );
 
         EmailNotificationDto emailDto = constructWelcomeEmail(requestDto, generatedOtp);
+
         rabbitTemplate.convertAndSend(
-                RabbitMQConfig.EXCHANGE_NAME,
-                RabbitMQConfig.ROUTING_KEY,
+                "openjar_exchange",
+                "notification_routing_key",
                 emailDto
         );
 
-        log.info("Registration successful. OTP sent to {}", requestDto.getUserEmail());
+        log.info("Registration successful. Template event sent for {}", requestDto.getUserEmail());
     }
 
     @Override
@@ -115,10 +118,16 @@ public class UserServiceImpl implements UserService {
     }
 
     private EmailNotificationDto constructWelcomeEmail(UserRequestDto requestDto, String otp) {
-        String body = "Hi " + requestDto.getUserName() + ",\n\n" +
-                "Welcome to OpenJar! Your verification OTP is: " + otp + "\n\n" +
-                "Happy Cooking!";
-        return new EmailNotificationDto(requestDto.getUserEmail(), body, "Verify Your OpenJar Account");
+        Map<String, Object> model = new HashMap<>();
+        model.put("userName", requestDto.getUserName());
+        model.put("otp", otp);
+
+        return new EmailNotificationDto(
+                requestDto.getUserEmail(),
+                "Verify Your OpenJar Account",
+                "otp-template",
+                model
+        );
     }
 
     private UserResponseDto mapToResponseDto(User user) {

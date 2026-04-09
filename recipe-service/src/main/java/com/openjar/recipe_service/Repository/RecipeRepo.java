@@ -1,6 +1,6 @@
-package com.recipeapp.recipe_service.Repository;
+package com.openjar.recipe_service.Repository;
 
-import com.recipeapp.recipe_service.Model.Recipe;
+import com.openjar.recipe_service.Model.Recipe;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

@@ -21,7 +21,7 @@ spring:
         - id: recipe-service
           uri: lb://RECIPE-SERVICE
           predicates:
-            - Path=/api/recipes/**
+            - Path=/recipes/**
 
         # Social Service
         - id: social-service

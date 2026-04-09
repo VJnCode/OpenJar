@@ -1,19 +1,16 @@
-package com.recipeapp.recipe_service.Service;
+package com.openjar.recipe_service.Service;
 
-import com.recipeapp.recipe_service.Configuration.RabbitMQConfig;
-import com.recipeapp.recipe_service.DTO.EmailNotificationDto;
-import com.recipeapp.recipe_service.DTO.RecipeNotificationDto;
-import com.recipeapp.recipe_service.DTO.RecipeRequestDto;
-import com.recipeapp.recipe_service.DTO.UserDto;
-import com.recipeapp.recipe_service.Model.Recipe;
-import com.recipeapp.recipe_service.Repository.RecipeRepo;
+import com.openjar.recipe_service.Configuration.RabbitMQConfig;
+import com.openjar.recipe_service.DTO.EmailNotificationDto;
+import com.openjar.recipe_service.DTO.RecipeRequestDto;
+import com.openjar.recipe_service.DTO.UserDto;
+import com.openjar.recipe_service.Model.Recipe;
+import com.openjar.recipe_service.Repository.RecipeRepo;
 import lombok.extern.slf4j.Slf4j; // 1. Added Slf4j annotation
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
 
 import java.util.HashMap;
 import java.util.List;

@@ -1,4 +1,4 @@
-package com.recipeapp.recipe_service;
+package com.openjar.recipe_service;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

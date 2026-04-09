@@ -1,4 +1,4 @@
-package com.recipeapp.recipe_service.Model;
+package com.openjar.recipe_service.Model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;

@@ -11,27 +11,35 @@ spring:
           enabled: true
           lower-case-service-id: true
       routes:
+        # User Service
         - id: user-service
           uri: lb://USER-SERVICE
           predicates:
             - Path=/api/users/**
 
+        # Recipe Service
         - id: recipe-service
           uri: lb://RECIPE-SERVICE
           predicates:
-            - Path=/recipe/**
+            - Path=/api/recipes/**
 
+        # Social Service
         - id: social-service
           uri: lb://SOCIAL-SERVICE
           predicates:
             - Path=/api/social/**
+
+        # Notification Service (Newly Added)
+        - id: notification-service
+          uri: lb://NOTIFICATION-SERVICE
+          predicates:
+            - Path=/api/notifications/**
 
 eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka/
   instance:
-    # This forces the Gateway to use IP addresses, which is much more stable
     prefer-ip-address: true
 
 logging:

@@ -6,6 +6,7 @@ import com.openjar.notificationservice.models.NotificationLog;
 import com.openjar.notificationservice.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
@@ -18,7 +19,7 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
     private final NotificationRepository repository;
-
+    @RabbitListener(queues = "email_queue")
     public void sendAndLogEmail(NotificationRequest request) {
         NotificationLog logEntry = NotificationLog.builder()
                 .recipient(request.getRecipientEmail())

@@ -15,9 +15,11 @@ public class NotificationRequest {
     @NotBlank(message = "Recipient email is required")
     private String recipientEmail;
 
+    @NotBlank(message = "Message body is required")
+    private String messageBody;
+
     @NotBlank(message = "Subject is required")
     private String subject;
 
-    @NotBlank(message = "Message body is required")
-    private String messageBody;
+
 }

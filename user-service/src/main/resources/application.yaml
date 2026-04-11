@@ -1,28 +1,87 @@
-server:
-  port: 8086
+#
+#spring:
+#  application:
+#    name: user-service
+#
+#  datasource:
+#    url: jdbc:mysql://localhost:3306/userservice
+#    username: root
+#    password: ROOT
+#    driver-class-name: com.mysql.cj.jdbc.Driver
+#
+#server:
+#  port: 8086
+#
+#  eureka:
+#    client:
+#      service-url:
+#        defaultZone: http://localhost:8761/eureka/
+#
+#
+##  datasource:
+##    url: jdbc:mysql://localhost:3306/OpenJar?createDatabaseIfNotExist=true
+##    username: root
+##    password: 1234
+##    driver-class-name: com.mysql.cj.jdbc.Driver
+##
+#  jpa:
+#    hibernate:
+#      ddl-auto: update
+#    show-sql: true
+#
+#management:
+#  endpoints:
+#    web:
+#      exposure:
+#        include: "mappings"
+##  security:
+##    oauth2:
+##      resourceserver:
+##        jwt:
+##          issuer-uri: http://localhost:8181/realms/RecipeRealm
+##          jwk-set-uri: http://localhost:8181/realms/RecipeRealm/protocol/openid-connect/certs
+
+
+
+
+
+
+
+
+
 
 spring:
   application:
     name: user-service
+
   datasource:
-    url: jdbc:mysql://localhost:3306/OpenJar?createDatabaseIfNotExist=true
+    url: jdbc:mysql://localhost:3306/user_service
     username: root
-    password: 1234
+    password: ROOT
     driver-class-name: com.mysql.cj.jdbc.Driver
-  
+
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: true
+
+server:
+  port: 8086
+
+eureka:
+  instance:
+    prefer-ip-address: true
+    ip-address: 127.0.0.1
+    hostname: 127.0.0.1
+    instance-id: user-service:8086
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    fetch-registry: true
+    register-with-eureka: true
 
 management:
   endpoints:
     web:
       exposure:
         include: "mappings"
-#  security:
-#    oauth2:
-#      resourceserver:
-#        jwt:
-#          issuer-uri: http://localhost:8181/realms/RecipeRealm
-#          jwk-set-uri: http://localhost:8181/realms/RecipeRealm/protocol/openid-connect/certs

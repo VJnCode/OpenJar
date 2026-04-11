@@ -67,7 +67,7 @@ public class UserServiceImpl implements UserService {
         EmailNotificationDto emailDto = constructWelcomeEmail(requestDto, generatedOtp);
         rabbitTemplate.convertAndSend(
                 RabbitMQConfig.EXCHANGE_NAME,
-                RabbitMQConfig.ROUTING_KEY,
+                RabbitMQConfig.EMAIL_ROUTING_KEY,
                 emailDto
         );
 

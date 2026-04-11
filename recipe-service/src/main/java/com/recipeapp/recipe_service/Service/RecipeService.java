@@ -88,11 +88,11 @@ public class RecipeService {
         );
 
         log.debug("Sending message to Exchange: {}, RoutingKey: {}",
-                RabbitMQConfig.EXCHANGE, RabbitMQConfig.NOTIFICATION_ROUTING_KEY);
+                RabbitMQConfig.EXCHANGE, RabbitMQConfig. N_ROUTING_KEY);
 
         rabbitTemplate.convertAndSend(
                 RabbitMQConfig.EXCHANGE,
-                RabbitMQConfig.NOTIFICATION_ROUTING_KEY,
+                RabbitMQConfig. N_ROUTING_KEY,
                 notification
         );
         log.info("Message successfully queued for: {}", email);

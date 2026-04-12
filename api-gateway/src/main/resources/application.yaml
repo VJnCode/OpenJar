@@ -6,34 +6,79 @@ spring:
     name: api-gateway
   cloud:
     gateway:
+      default-filters:
+        - TokenRelay=
       discovery:
         locator:
           enabled: true
           lower-case-service-id: true
       routes:
-        # User Service
+        - id: auth-login
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/login, /logout
+          filters:
+            - PreserveHostHeader
+
+        - id: auth-oauth2
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/oauth2/**
+          filters:
+            - PreserveHostHeader
+
+        - id: auth-wellknown
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/.well-known/**
+          filters:
+            - PreserveHostHeader
+
+        - id: auth-userinfo
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/userinfo
+          filters:
+            - PreserveHostHeader
+
         - id: user-service
           uri: lb://USER-SERVICE
           predicates:
             - Path=/api/users/**
 
-        # Recipe Service
         - id: recipe-service
           uri: lb://RECIPE-SERVICE
           predicates:
-            - Path=/recipes/**
+            - Path=/recipe/**
 
-        # Social Service
         - id: social-service
           uri: lb://SOCIAL-SERVICE
           predicates:
             - Path=/api/social/**
 
-        # Notification Service (Newly Added)
         - id: notification-service
           uri: lb://NOTIFICATION-SERVICE
           predicates:
             - Path=/api/notifications/**
+
+  security:
+    oauth2:
+      client:
+        registration:
+          openjar-client:
+            provider: openjar
+            client-id: openjar-client
+            client-secret: openjar-secret
+            authorization-grant-type: authorization_code
+            redirect-uri: "http://localhost:8081/login/oauth2/code/openjar-client"
+            scope: openid, profile
+          google:
+            client-id: YOUR_GOOGLE_CLIENT_ID
+            client-secret: YOUR_GOOGLE_CLIENT_SECRET
+            scope: openid, profile, email
+        provider:
+          openjar:
+            issuer-uri: http://localhost:8086
 
 eureka:
   client:
@@ -44,5 +89,5 @@ eureka:
 
 logging:
   level:
+    org.springframework.security: DEBUG
     org.springframework.cloud.gateway: TRACE
-    org.springframework.http.server.reactive: DEBUG

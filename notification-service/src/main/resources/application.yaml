@@ -53,6 +53,12 @@ spring:
             enable: true
             required: true
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
 ---
 spring:
   config:
@@ -69,3 +75,4 @@ spring:
     host: localhost
     port: 1025
     # No auth needed for local testing tools
+

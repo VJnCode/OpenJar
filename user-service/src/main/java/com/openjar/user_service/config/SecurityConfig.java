@@ -109,6 +109,7 @@ public class SecurityConfig {
                                 "/api/users/verify",
                                 "/login",
                                 "/error",
+                                "/actuator/health",
                                 "/oauth2/**",
                                 "/.well-known/**",
                                 "/userinfo"
@@ -146,8 +147,15 @@ public class SecurityConfig {
 
     @Bean
     public AuthorizationServerSettings authorizationServerSettings() {
+        // Look for the environment variable first (Docker mode),
+        // otherwise fallback to localhost (Local dev mode)
+        String issuer = System.getenv("SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_ISSUER");
+        if (issuer == null || issuer.isEmpty()) {
+            issuer = "http://localhost:8086";
+        }
+
         return AuthorizationServerSettings.builder()
-                .issuer("http://localhost:8086")
+                .issuer(issuer)
                 .build();
     }
 

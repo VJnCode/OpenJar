@@ -1,14 +1,14 @@
-# Use an official JDK 17 runtime as a parent image
-FROM eclipse-temurin:17-jdk-alpine
-
-# Set the working directory inside the container
+# Stage 1: Build
+FROM maven:3.8.4-openjdk-17-slim AS build
 WORKDIR /app
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
+COPY . .
+RUN mvn clean package -DskipTests
 
-# Copy the executable JAR file from the target folder to the container
-COPY target/*.jar app.jar
+# Stage 2: Runtime
+FROM eclipse-temurin:17-jdk-alpine
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
 
-# Expose the port the Social Service runs on
-EXPOSE 8087
-
-# Run the JAR file
 ENTRYPOINT ["java", "-jar", "app.jar"]

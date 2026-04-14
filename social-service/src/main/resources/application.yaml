@@ -11,14 +11,24 @@ spring:
     password: ${DB_PASS:1234}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
-  # RabbitMQ connection for the producer
   rabbitmq:
     host: ${RABBIT_HOST:localhost}
     port: 5672
     username: ${RABBIT_USER:guest}
     password: ${RABBIT_PASS:guest}
 
-# Swagger/OpenAPI Configuration
+# ADD THIS SECTION BELOW
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+
 springdoc:
   api-docs:
     path: /v3/api-docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

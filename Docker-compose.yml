@@ -1,83 +1,163 @@
 services:
-  # Infrastructure: Database
+  # 1. Database
   openjar-db:
     image: mysql:8.0
     container_name: openjar-db
     environment:
-      MYSQL_DATABASE: OpenJar
       MYSQL_ROOT_PASSWORD: 1234
+      MYSQL_DATABASE: OpenJar
     ports:
-      - "3306:3306"
+      - "3307:3306"
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 5s
       timeout: 5s
       retries: 10
 
-  # Infrastructure: Service Discovery
+  # 2. RabbitMQ
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  # 3. Eureka Server
   eureka-server:
     build: ./eureka
     container_name: eureka-server
     ports:
       - "8761:8761"
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8761/actuator/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s # Give Java 30 seconds to boot before checking health
 
-  # Infrastructure: Identity Provider
+  # 4. User Service (Identity Provider)
   user-service:
     build: ./user-service
     container_name: user-service
     ports:
       - "8086:8086"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://openjar-db:3306/OpenJar
+      SERVER_PORT: 8086
+      SPRING_DATASOURCE_URL: jdbc:mysql://openjar-db:3306/OpenJar?createDatabaseIfNotExist=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 1234
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_ISSUER: http://user-service:8086
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8086/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     depends_on:
       openjar-db:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
 
-  # Infrastructure: API Gateway
+  # 5. Recipe Service
+  recipe-service:
+    build: ./recipe-service
+    container_name: recipe-service
+    ports:
+      - "8082:8082"
+    environment:
+      SERVER_PORT: 8082
+      SPRING_DATASOURCE_URL: jdbc:mysql://openjar-db:3306/RecipeService?createDatabaseIfNotExist=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 1234
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://user-service:8086
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8082/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    depends_on:
+      openjar-db:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+
+  # 6. Social Service
+  social-service:
+    build: ./social-service
+    container_name: social-service
+    ports:
+      - "8083:8087"
+    environment:
+      SERVER_PORT: 8087
+      SPRING_DATASOURCE_URL: jdbc:mysql://openjar-db:3306/openjar_social?createDatabaseIfNotExist=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 1234
+      SPRING_RABBITMQ_HOST: rabbitmq
+      # Correct Variable Name:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8087/actuator/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    depends_on:
+      openjar-db:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+
+  # 7. Notification Service
+  notification-service:
+    build: ./notification-service
+    container_name: notification-service
+    environment:
+      SERVER_PORT: 8084
+      SPRING_DATASOURCE_URL: jdbc:mysql://openjar-db:3306/openjar_notification?createDatabaseIfNotExist=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 1234
+      SPRING_RABBITMQ_HOST: rabbitmq
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8084/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      openjar-db:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+
+  # 8. API Gateway (The Final Service)
   api-gateway:
     build: ./api-gateway
     container_name: api-gateway
     ports:
       - "8081:8081"
     environment:
+      SERVER_PORT: 8081
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
       SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OPENJAR_ISSUER_URI: http://user-service:8086
     depends_on:
-      - eureka-server
-      - user-service
-
-  # Business: Recipe Management
-  recipe-service:
-    build: ./recipe-service
-    container_name: recipe-service
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://openjar-db:3306/OpenJar
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
-      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://user-service:8086
-    depends_on:
-      - openjar-db
-      - eureka-server
-
-  # Business: Social Features
-  social-service:
-    build: ./social-service
-    container_name: social-service
-    environment:
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
-      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://user-service:8086
-    depends_on:
-      - eureka-server
-
-  # Business: Notifications
-  notification-service:
-    build: ./notification-service
-    container_name: notification-service
-    environment:
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
-    depends_on:
-      - eureka-server
+      user-service:
+        condition: service_healthy
+      recipe-service:
+        condition: service_healthy
+      social-service:
+        condition: service_healthy
 
 networks:
   default:

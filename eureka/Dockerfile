@@ -1,14 +1,18 @@
-# Start with a base image containing Java 17
-FROM eclipse-temurin:17-jdk-alpine
+# Stage 1: Build
+FROM maven:3.8.4-openjdk-17-slim AS build
+WORKDIR /app
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
+COPY . .
+RUN mvn clean package -DskipTests
 
-# Set the working directory inside the container
+# Stage 2: Runtime
+FROM eclipse-temurin:17-jdk-alpine
 WORKDIR /app
 
-# Copy the compiled JAR file into the container
-COPY target/user-service-0.0.1-SNAPSHOT.jar app.jar
+# THIS LINE IS THE FIX: Alpine needs wget installed to run healthchecks
+RUN apk add --no-cache wget
 
-# Expose the port your app runs on
-EXPOSE 8086
-
-# Command to execute the application
+COPY --from=build /app/target/*.jar app.jar
+EXPOSE 8761
 ENTRYPOINT ["java", "-jar", "app.jar"]

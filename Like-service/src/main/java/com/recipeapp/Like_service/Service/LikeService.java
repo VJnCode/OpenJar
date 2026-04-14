@@ -108,10 +108,7 @@ package com.recipeapp.Like_service.Service;
 
 import com.recipeapp.Like_service.Cofigurations.RabbitMQConfig;
 import com.recipeapp.Like_service.Cofigurations.WebClientConfig;
-import com.recipeapp.Like_service.DTO.LikeDto;
-import com.recipeapp.Like_service.DTO.LikeNotificationDto;
-import com.recipeapp.Like_service.DTO.RecipeDTO;
-import com.recipeapp.Like_service.DTO.UserDto;
+import com.recipeapp.Like_service.DTO.*;
 import com.recipeapp.Like_service.Event.LikeEvent;
 import com.recipeapp.Like_service.Repository.LikeRepo;
 import lombok.extern.slf4j.Slf4j;
@@ -120,6 +117,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
+
+import java.util.HashMap;
+
 @Slf4j
 @Service
 public class LikeService {
@@ -182,16 +182,18 @@ public class LikeService {
                         .block();
                 log.info("LikedByUser fetched: {}", likedByUser);
 
-                rabbitTemplate.convertAndSend(
-                        RabbitMQConfig.EXCHANGE,
-                        RabbitMQConfig.LIKE_Recipe_ROUTING_KEY ,
-                        new LikeNotificationDto(
-                                recipeOwner.getUserName(),   // ownerName   → recipe owner
-                                likedByUser.getUserName(),   // receiverName → who liked
-                                recipeOwner.getUserEmail(),  // receiverEmail → owner's email
-                                recipe.getRecipeName()       // recipeName
-                        )
-                );
+
+                triggerNotification(recipe, recipeOwner,likedByUser);
+//                rabbitTemplate.convertAndSend(
+//                        RabbitMQConfig.EXCHANGE,
+//                        RabbitMQConfig.LIKE_Recipe_ROUTING_KEY ,
+//                        new LikeNotificationDto(
+//                                recipeOwner.getUserName(),   // ownerName   → recipe owner
+//                                likedByUser.getUserName(),   // receiverName → who liked
+//                                recipeOwner.getUserEmail(),  // receiverEmail → owner's email
+//                                recipe.getRecipeName()       // recipeName
+//                        )
+//                );
                 log.info("Like notification sent for recipe {}", recipeId);
 
             } catch (Exception e) {
@@ -202,6 +204,34 @@ public class LikeService {
             long totalLikes = likeRepository.countByRecipeId(recipeId);
             return LikeDto.of("LIKED", totalLikes);
         }
+    }
+
+
+    public  void triggerNotification(RecipeDTO recipe ,UserDto recipeOwner , UserDto likedByUser){
+        HashMap<String,Object> model = new HashMap<>();
+        model.put("recipeName",recipe.getRecipeName());
+        model.put("userName",recipeOwner.getUserName());
+        model.put("likeeName",likedByUser.getUserName());
+
+
+        EmailNotificationDto notification = new EmailNotificationDto(
+                recipeOwner.getUserEmail(),
+                "Success! '" + likedByUser.getUserName() + "' liked your recipe"+recipe.getRecipeName(),
+                "like-created", // The HTML file name
+                model
+        );
+
+        rabbitTemplate.convertAndSend(
+                RabbitMQConfig.EXCHANGE,
+                RabbitMQConfig.LIKE_Recipe_ROUTING_KEY,
+                notification
+        );
+
+
+        log.info("Like notification queued for {}", recipeOwner.getUserEmail());
+
+
+
     }
 
     public long getLikeCount(Long recipeId) {

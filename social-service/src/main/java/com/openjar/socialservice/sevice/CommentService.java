@@ -9,4 +9,6 @@ import java.util.List;
 public interface CommentService {
     void postComment(CommentRequestDto requestDto);
     List<CommentResponseDto> getCommentsByRecipe(String recipeId);
+
+    void postReply(CommentRequestDto dto, String recipeId, String parentId, String userId);
 }

@@ -9,8 +9,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Service;
 
-import java.util.Map;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -19,47 +17,34 @@ public class NotificationListener {
     private final EmailService emailService;
 
     @RabbitListener(queues = "notification_queue")
-    public void consumeRecipeNotification(RecipeNotificationDto recipeDto) {
-        log.info("Received Recipe Event from RabbitMQ!");
-        log.info("Sending email to: {}", recipeDto.getUserEmail());
+    public void consumeRecipeNotification(EmailNotificationDto emailDto) { // Changed from RecipeNotificationDto
+        log.info("📬 Received Template-based Notification for {}", emailDto.getRecipientEmail());
 
         try {
-            // Map the Recipe DTO to your internal NotificationRequest DTO
-            NotificationRequest request = new NotificationRequest(
-                    recipeDto.getUserEmail(),
-                    recipeDto.getSubject(),
-                    recipeDto.getMessageBody()
-            );
-
-            emailService.sendAndLogEmail(request);
-            log.info("Recipe notification successfully delivered to {}", recipeDto.getUserEmail());
-
+            emailService.sendHtmlNotification(emailDto);
+            log.info("✅ Delivered template: {} to {}", emailDto.getTemplateName(), emailDto.getRecipientEmail());
         } catch (Exception e) {
-            log.error(" Failed to process recipe event: {}", e.getMessage());
+            log.error("❌ Notification Listener Error: {}", e.getMessage());
         }
     }
 
 
 
-    // new listener for like events
-    @RabbitListener(queues =  "recipe_like_queue")
-    public void consumeLikeNotification(LikeNotificationDto likeDto) {
-        log.info("Received Like Event!");
-        try {
-            String subject = likeDto.getReceiverName() + " liked your recipe!";
-            String body = "Hi " + likeDto.getOwnerName() + ",\n\n"
-                    + likeDto.getReceiverName() + " liked your recipe '"
-                    + likeDto.getRecipeName() + "'!";
 
-            NotificationRequest request = new NotificationRequest(
-                    likeDto.getReceiverEmail(),
-                    body,  subject
-            );
-            emailService.sendAndLogEmail(request);
+
+    @RabbitListener(queues ="recipe_like_queue")
+    public void consumeLikeNotification(EmailNotificationDto emailDto) { // Changed from RecipeNotificationDto
+        log.info("📬 Received Template-based Notification for {}", emailDto.getRecipientEmail());
+
+        try {
+            emailService.sendHtmlNotification(emailDto);
+            log.info("✅ Delivered template: {} to {}", emailDto.getTemplateName(), emailDto.getRecipientEmail());
         } catch (Exception e) {
-            log.error("Failed to process like event: {}", e.getMessage());
+            log.error("❌ Notification Listener Error: {}", e.getMessage());
         }
     }
+
+
 
 
 }

@@ -24,6 +24,8 @@ public class Comment {
 
     private LocalDateTime createdAt;
 
+    private String parentId;
+
     @PrePersist
     protected void onCreate() {
         if (this.commentId == null) {
@@ -31,4 +33,6 @@ public class Comment {
         }
         this.createdAt = LocalDateTime.now();
     }
+
+
 }

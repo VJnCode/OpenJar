@@ -1,6 +1,7 @@
-package com.openjar.notificationservice.controller; // Ensure this matches your folder!
+package com.openjar.notificationservice.controller;
 
-import com.openjar.notificationservice.dto.NotificationRequest;
+import com.openjar.notificationservice.dto.EmailNotificationDto;
+import com.openjar.notificationservice.dto.RecipeNotificationDto;
 import com.openjar.notificationservice.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -12,9 +13,9 @@ public class NotificationController {
 
     private final EmailService emailService;
 
-    @PostMapping("/test-email")
-    public String sendTestEmail(@RequestBody NotificationRequest request) {
-        emailService.sendAndLogEmail(request);
-        return "Notification request sent to service layer!";
+    @PostMapping("/test-template")
+    public String sendTestTemplate(@RequestBody EmailNotificationDto request) { // Changed from RecipeNotificationDto
+        emailService.sendHtmlNotification(request);
+        return "HTML Template notification processed!";
     }
 }

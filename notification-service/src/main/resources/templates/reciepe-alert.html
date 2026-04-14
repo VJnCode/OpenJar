@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        .email-container { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; }
+        .header { background-color: #ff6b6b; color: white; padding: 20px; text-align: center; }
+        .content { padding: 30px; color: #333; line-height: 1.6; }
+        .recipe-card { background: #f9f9f9; border-left: 4px solid #ff6b6b; padding: 15px; margin: 20px 0; }
+        .footer { background-color: #f1f1f1; color: #777; text-align: center; padding: 15px; font-size: 12px; }
+        .btn { display: inline-block; padding: 12px 25px; background-color: #ff6b6b; color: white !important; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 15px; }
+    </style>
+</head>
+<body>
+<div class="email-container">
+    <div class="header">
+        <h1>OpenJar</h1>
+    </div>
+    <div class="content">
+        <h2 th:text="'Hi ' + ${userName} + '!'">Hi User!</h2>
+        <p>We thought you might like this new recipe shared on <strong>OpenJar</strong>:</p>
+
+        <div class="recipe-card">
+            <h3 th:text="${recipeTitle}">Recipe Title</h3>
+            <p th:text="${recipeDescription}">A short description of the tasty dish.</p>
+            <p><strong>Chef: </strong> <span th:text="${authorName}">Chef Name</span></p>
+        </div>
+
+        <p>Click the button below to view the full ingredients and cooking steps.</p>
+        <a th:href="${recipeUrl}" class="btn">View Full Recipe</a>
+    </div>
+    <div class="footer">
+        <p>&copy; 2026 OpenJar Microservices Project. All rights reserved.</p>
+    </div>
+</div>
+</body>
+</html>

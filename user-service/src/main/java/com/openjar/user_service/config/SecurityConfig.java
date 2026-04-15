@@ -112,7 +112,9 @@ public class SecurityConfig {
                                 "/actuator/health",
                                 "/oauth2/**",
                                 "/.well-known/**",
-                                "/userinfo"
+                                "/userinfo",
+                                // --- SWAGGER JSON WHITELIST ---
+                                "/api/users/v3/api-docs"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

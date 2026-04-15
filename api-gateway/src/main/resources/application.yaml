@@ -1,5 +1,6 @@
 server:
   port: 8081
+  # Removed the invalid servlet context-path!
 
 spring:
   application:
@@ -97,3 +98,16 @@ management:
     web:
       exposure:
         include: health
+
+# --- ADDED THIS TO ENABLE SWAGGER UI ON GATEWAY ---
+springdoc:
+  swagger-ui:
+    urls:
+      - name: User Service API
+        url: /api/users/v3/api-docs
+      - name: Recipe Service API
+        url: /recipe/v3/api-docs
+      - name: Social Service API
+        url: /api/social/v3/api-docs
+      - name: Notification Service API
+        url: /api/notifications/v3/api-docs

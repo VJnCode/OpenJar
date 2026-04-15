@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: social-service
+  main:
+    web-application-type: servlet
 
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/openjar_social}
@@ -25,10 +27,11 @@ eureka:
 
 springdoc:
   api-docs:
-    path: /v3/api-docs
+    path: /api/social/v3/api-docs
 
 management:
   endpoints:
     web:
       exposure:
         include: health
+

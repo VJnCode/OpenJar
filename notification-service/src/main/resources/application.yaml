@@ -59,6 +59,10 @@ management:
       exposure:
         include: health
 
+springdoc:
+  api-docs:
+    path: /api/notifications/v3/api-docs
+
 ---
 spring:
   config:

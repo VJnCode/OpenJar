@@ -50,3 +50,7 @@ management:
     web:
       exposure:
         include: health
+
+springdoc:
+  api-docs:
+    path: /recipe/v3/api-docs

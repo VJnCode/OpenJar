@@ -11,6 +11,10 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:1234}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
+springdoc:
+  api-docs:
+    path: /api/users/v3/api-docs
+
 management:
   endpoints:
     web:

@@ -14,22 +14,34 @@ public class GatewaySecurityConfig {
     @Bean
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
         http
-            .authorizeExchange(exchanges -> exchanges
-                .pathMatchers(
-                    "/login/**",
-                    "/logout",
-                    "/oauth2/**",
-                    "/.well-known/**",      // ← gateway must let this through
-                    "/userinfo",
-                    "/api/users/register",
-                    "/api/users/verify",
-                    "/error"
-                ).permitAll()
-                .anyExchange().authenticated()
-            )
-            .oauth2Login(Customizer.withDefaults())
-            .oauth2Client(Customizer.withDefaults())
-            .csrf(csrf -> csrf.disable());
+                .authorizeExchange(exchanges -> exchanges
+                        .pathMatchers(
+                                "/login/**",
+                                "/logout",
+                                "/oauth2/**",
+                                "/.well-known/**",
+                                "/userinfo",
+                                "/api/users/register",
+                                "/api/users/verify",
+                                "/error",
+
+                                // --- SWAGGER UI CORE FILES ---
+                                "/swagger-ui.html",
+                                "/swagger-ui/**",
+                                "/webjars/**",
+                                "/v3/api-docs/**",
+
+                                // --- MICROSERVICE DOC PATHS (THE FIX!) ---
+                                "/api/users/v3/api-docs",
+                                "/recipe/v3/api-docs",
+                                "/api/social/v3/api-docs",
+                                "/api/notifications/v3/api-docs"
+                        ).permitAll()
+                        .anyExchange().authenticated()
+                )
+                .oauth2Login(Customizer.withDefaults())
+                .oauth2Client(Customizer.withDefaults())
+                .csrf(csrf -> csrf.disable());
 
         return http.build();
     }

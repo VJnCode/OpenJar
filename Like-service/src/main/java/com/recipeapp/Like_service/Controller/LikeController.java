@@ -18,10 +18,10 @@ public class LikeController {
         this.likeService=likeService;
     }
 
-    @PostMapping("/{recipeId}")
+    @PostMapping("/{recipeId}/{userId}")
     public ResponseEntity<LikeDto> toggleLike(
             @PathVariable Long recipeId,
-            @RequestHeader("X-User-Id") Long userId) {
+          @PathVariable String userId) {
         LikeDto response = likeService.toggleLike(userId, recipeId);
         return ResponseEntity.ok(response);
     }
@@ -35,10 +35,10 @@ public class LikeController {
     }
 
     // Check if a specific user has liked a recipe
-    @GetMapping("/{recipeId}/status")
+    @GetMapping("/{recipeId}/{userId}/status")
     public ResponseEntity<LikeStatusDto> getLikeStatus(
             @PathVariable Long recipeId,
-            @RequestHeader("X-User-Id") Long userId) {
+           @PathVariable String userId) {
         Long liked = likeService.hasUserLiked(userId, recipeId);
         if(liked!=0){
             return ResponseEntity.ok(LikeStatusDto.of(true));

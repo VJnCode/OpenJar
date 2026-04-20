@@ -1,6 +1,56 @@
+#spring:
+#  application:
+#    name: like-service
+#
+#  datasource:
+#    url: jdbc:mysql://localhost:3306/LikeInteraction
+#    username: root
+#    password: ROOT
+#
+#  jpa:
+#    hibernate:
+#      ddl-auto: update
+#    show-sql: true
+#
+#  mvc:
+#    static-path-pattern: /uploads/**
+#
+#  servlet:
+#    multipart:
+#      max-file-size: 10MB
+#      max-request-size: 10MB
+#
+#  web:
+#    error:
+#      include-message: always
+#      include-binding-errors: always
+#      include-stacktrace: always
+#
+#  rabbitmq:
+#    host: localhost
+#    port: 5672
+#    username: guest
+#    password: guest
+#
+#server:          # ← root level
+#  port: 8081
+#
+#eureka:
+#  instance:
+#    prefer-ip-address: true# ← root level
+#  client:
+#    service-url:
+#      defaultZone: http://localhost:8761/eureka/
+#
+#logging:
+#  level:
+#    root: INFO
+#    org.springframework.security: DEBUG
+
+
 spring:
   application:
-    name: Like-service
+    name: like-service
 
   datasource:
     url: jdbc:mysql://localhost:3306/LikeInteraction
@@ -20,12 +70,6 @@ spring:
       max-file-size: 10MB
       max-request-size: 10MB
 
-  web:
-    error:
-      include-message: always
-      include-binding-errors: always
-      include-stacktrace: always
-
   rabbitmq:
     host: localhost
     port: 5672
@@ -35,12 +79,20 @@ spring:
 server:
   port: 8081
 
+eureka:
+  instance:
+    prefer-ip-address: true
+    ip-address: 127.0.0.1
+    hostname: 127.0.0.1
+    instance-id: ${spring.application.name}:${server.port}
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    fetch-registry: true
+    register-with-eureka: true
+
 logging:
   level:
     root: INFO
     org.springframework.security: DEBUG
 
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/

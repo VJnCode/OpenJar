@@ -113,6 +113,7 @@ public class SecurityConfig {
                                 "/oauth2/**",
                                 "/.well-known/**",
                                 "/userinfo",
+                        "/api/users/**",
                                 // --- SWAGGER JSON WHITELIST ---
                                 "/api/users/v3/api-docs"
                         ).permitAll()

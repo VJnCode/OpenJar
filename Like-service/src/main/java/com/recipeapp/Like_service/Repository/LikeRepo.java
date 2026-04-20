@@ -14,7 +14,7 @@ public interface LikeRepo extends JpaRepository<LikeInteraction,Long> {
 
     @Query(value = "SELECT * FROM likes WHERE user_id = :userId AND recipe_id = :recipeId LIMIT 1",
             nativeQuery = true)
-    Optional<LikeInteraction> findByUserIdAndRecipeId(@Param("userId") Long userId,
+    Optional<LikeInteraction> findByUserIdAndRecipeId(@Param("userId") String userId,
                                                       @Param("recipeId") Long recipeId);
 
     @Query(value = "SELECT COUNT(*) FROM likes WHERE recipe_id = :recipeId",
@@ -29,21 +29,21 @@ public interface LikeRepo extends JpaRepository<LikeInteraction,Long> {
 
     @Query(value = "SELECT COUNT(*) FROM likes WHERE user_id = :userId AND recipe_id = :recipeId",
             nativeQuery = true)
-    Long existsByUserIdAndRecipeId(@Param("userId") Long userId,
+    Long existsByUserIdAndRecipeId(@Param("userId") String userId,
                                    @Param("recipeId") Long recipeId);
 
     @Modifying
     @Transactional
     @Query(value = "DELETE FROM likes WHERE user_id = :userId AND recipe_id = :recipeId",
             nativeQuery = true)
-    void deleteByUserIdAndRecipeId(@Param("userId") Long userId,
+    void deleteByUserIdAndRecipeId(@Param("userId") String userId,
                                    @Param("recipeId") Long recipeId);
 
     @Modifying
     @Transactional
     @Query(value = "INSERT INTO likes (user_id, recipe_id, created_at) VALUES (:userId, :recipeId, NOW())",
             nativeQuery = true)
-    void insertLike(@Param("userId") Long userId, @Param("recipeId") Long recipeId);
+    void insertLike(@Param("userId") String userId, @Param("recipeId") Long recipeId);
 }
 
 

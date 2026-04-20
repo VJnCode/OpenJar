@@ -13,7 +13,7 @@ public class LikeInteraction {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long likeId;
     private long recipeId;
-    private long userId;
+    private String userId;
     private LocalDateTime createdAt;
 
 }

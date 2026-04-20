@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        .wrapper { background-color: #f8f9fa; padding: 40px 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .main-card { max-width: 450px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #e1e4e8; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .header { background-color: #ff6b6b; padding: 30px; text-align: center; color: white; }
+        .body { padding: 40px 30px; text-align: center; color: #2d3436; }
+        .like-container { margin: 30px 0; padding: 20px; background: #fff5f5; border-radius: 8px; border: 2px dashed #ff6b6b; }
+        .heart-icon { font-size: 48px; }
+        .liker-name { font-size: 22px; font-weight: 800; color: #ff6b6b; margin-top: 10px; }
+        .footer { padding: 20px; background: #f1f3f5; text-align: center; font-size: 12px; color: #636e72; }
+        .note { font-size: 13px; color: #a2a2a2; margin-top: 20px; }
+    </style>
+</head>
+<body>
+<div class="wrapper">
+    <div class="main-card">
+        <div class="header">
+            <h1 style="margin: 0; font-size: 24px;">OpenJar</h1>
+        </div>
+        <div class="body">
+            <h2 style="margin-top: 0;">Hey <span th:text="${userName}">Chef</span>! ❤️</h2>
+            <p>Someone just liked your profile on OpenJar. You're getting noticed in the community!</p>
+
+            <div class="like-container">
+                <div class="heart-icon">❤️</div>
+                <div class="liker-name" th:text="${likerName}">Someone</div>
+                <p style="margin: 6px 0 0; font-size: 14px; color: #636e72;">liked your profile</p>
+            </div>
+
+            <p class="note">Keep sharing your amazing recipes and inspiring others. <br/> The community loves what you're cooking!</p>
+        </div>
+        <div class="footer">
+            &copy; 2026 OpenJar Microservices | Kavoor, Mangalore
+        </div>
+    </div>
+</div>
+</body>
+</html>

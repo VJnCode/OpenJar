@@ -4,28 +4,39 @@ server:
 spring:
   application:
     name: user-service
+
   datasource:
-    # This checks for SPRING_DATASOURCE_URL env var, otherwise defaults to localhost
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/OpenJar?createDatabaseIfNotExist=true}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/user_service}
     username: ${SPRING_DATASOURCE_USERNAME:root}
-    password: ${SPRING_DATASOURCE_PASSWORD:1234}
+    password: ${SPRING_DATASOURCE_PASSWORD:ROOT}
     driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
 
 springdoc:
   api-docs:
     path: /api/users/v3/api-docs
 
+eureka:
+  instance:
+    prefer-ip-address: true
+    ip-address: 127.0.0.1
+    hostname: 127.0.0.1
+    instance-id: user-service:8086
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+    fetch-registry: true
+    register-with-eureka: true
+
 management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,mappings
   endpoint:
     health:
       show-details: always
-
-eureka:
-  client:
-    service-url:
-      # This is the critical fix for the logs you're seeing
-      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}

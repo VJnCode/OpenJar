@@ -84,7 +84,7 @@ public class RecipeService {
 
         rabbitTemplate.convertAndSend(
                 RabbitMQConfig.EXCHANGE,
-                RabbitMQConfig.NOTIFICATION_ROUTING_KEY,
+                RabbitMQConfig.N_ROUTING_KEY,
                 notification
         );
 

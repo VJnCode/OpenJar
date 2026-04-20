@@ -1,4 +1,4 @@
-package com.recipeapp.recipe_service.Configuration;
+package com.openjar.recipe_service.Configuration;
 
 
 //import ch.qos.logback.classic.pattern.MessageConverter;

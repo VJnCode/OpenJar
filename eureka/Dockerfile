@@ -9,6 +9,10 @@ RUN mvn clean package -DskipTests
 # Stage 2: Runtime
 FROM eclipse-temurin:17-jdk-alpine
 WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
 
+# THIS LINE IS THE FIX: Alpine needs wget installed to run healthchecks
+RUN apk add --no-cache wget
+
+COPY --from=build /app/target/*.jar app.jar
+EXPOSE 8761
 ENTRYPOINT ["java", "-jar", "app.jar"]

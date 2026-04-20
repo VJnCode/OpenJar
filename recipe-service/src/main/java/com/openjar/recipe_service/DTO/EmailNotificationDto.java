@@ -1,4 +1,4 @@
-package com.recipeapp.recipe_service.DTO;
+package com.openjar.recipe_service.DTO;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

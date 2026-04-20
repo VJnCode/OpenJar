@@ -23,7 +23,6 @@ public interface UserRepository extends JpaRepository<User, String> {
     @Query(value = "SELECT * FROM users WHERE user_id = :id", nativeQuery = true)
     Optional<User> findUserByIdNative(@Param("id") String id);
 
-    // 1. Updated Insert Query
     @Modifying
     @Transactional
     @Query(value = "INSERT INTO users (user_id, user_name, user_email, password, created_at, is_verified, otp) " +
@@ -38,6 +37,17 @@ public interface UserRepository extends JpaRepository<User, String> {
 
     @Modifying
     @Transactional
+    @Query(value = "INSERT INTO users (user_id, user_name, user_email, password, created_at, is_verified, otp) " +
+            "VALUES (:userId, :userName, :userEmail, 'GOOGLE_AUTH', NOW(), true, NULL)",
+            nativeQuery = true)
+    void insertGoogleUserNative(
+            @Param("userId") String userId,
+            @Param("userName") String userName,
+            @Param("userEmail") String userEmail
+    );
+
+    @Modifying
+    @Transactional
     @Query(value = "UPDATE users SET is_verified = true, otp = NULL WHERE user_email = :email AND otp = :otp", nativeQuery = true)
     int verifyUserNative(@Param("email") String email, @Param("otp") String otp);
 
@@ -47,7 +57,6 @@ public interface UserRepository extends JpaRepository<User, String> {
             "WHERE user_id = :id", nativeQuery = true)
     void updateUserNative(@Param("id") String id, @Param("userName") String userName, @Param("userEmail") String userEmail);
 
-    // Add this missing method to check for duplicate emails
     @Query(value = "SELECT COUNT(*) FROM users WHERE user_email = :email", nativeQuery = true)
     int checkEmailExistsNative(@Param("email") String email);
 
@@ -56,9 +65,12 @@ public interface UserRepository extends JpaRepository<User, String> {
     @Query(value = "DELETE FROM users WHERE user_id = :id", nativeQuery = true)
     void deleteUserNative(@Param("id") String id);
 
+    @Query(value = "SELECT * FROM users WHERE user_email = :email", nativeQuery = true)
+    Optional<User> findByEmail(@Param("email") String email);
+
     @Query(value = "SELECT COUNT(*) FROM users WHERE user_email = :email", nativeQuery = true)
     int countByUserEmailNative(@Param("email") String email);
 
-    @Query(value = "SELECT COUNT(*) FROM users WHERE user_name = :userName", nativeQuery = true)
-    int countByUserNameNative(@Param("userName") String userName);
+    @Query(value = "SELECT COUNT(*) FROM users WHERE user_name = :username", nativeQuery = true)
+    int countByUserNameNative(@Param("username") String username);
 }

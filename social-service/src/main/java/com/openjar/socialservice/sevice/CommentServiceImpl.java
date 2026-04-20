@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -24,7 +25,7 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     @Transactional
-    public void postComment(CommentRequestDto requestDto) {
+    public CommentResponseDto postComment(CommentRequestDto requestDto) {
         log.info("Processing top-level comment for Recipe: {}", requestDto.getRecipeId());
 
         String generatedId = UUID.randomUUID().toString();
@@ -77,6 +78,17 @@ public class CommentServiceImpl implements CommentService {
                 rabbitTemplate.convertAndSend("openjar_exchange", "notification_routing_key", notification);
                 log.info("Notification sent to {} for recipe {}", displayName, recipe.getRecipeName());
             }
+
+            // Return the newly created comment DTO
+            return CommentResponseDto.builder()
+                    .id(generatedId)
+                    .recipeId(requestDto.getRecipeId())
+                    .userId(requestDto.getUserId())
+                    .content(requestDto.getContent())
+                    .parentId(null)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
         } catch (Exception e) {
             log.error("Transaction failed: {}", e.getMessage());
             throw new RuntimeException("Flow failed: " + e.getMessage());
@@ -85,7 +97,7 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     @Transactional
-    public void postReply(CommentRequestDto dto, String recipeIdStr, String parentId, String userId) {
+    public CommentResponseDto postReply(CommentRequestDto dto, String recipeIdStr, String parentId, String userId) {
         log.info("User {} is replying to parent comment {}", userId, parentId);
 
         String newReplyId = UUID.randomUUID().toString();
@@ -102,6 +114,16 @@ public class CommentServiceImpl implements CommentService {
         if (rows == 0) {
             throw new RuntimeException("Could not post reply. Check parent ID.");
         }
+
+        // Return the newly created reply DTO
+        return CommentResponseDto.builder()
+                .id(newReplyId)
+                .recipeId(recipeIdStr)
+                .userId(userId)
+                .content(dto.getContent())
+                .parentId(parentId)
+                .createdAt(LocalDateTime.now())
+                .build();
     }
 
     @Override

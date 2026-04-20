@@ -1,16 +1,47 @@
 server:
   port: 8081
+  # Removed the invalid servlet context-path!
 
 spring:
   application:
     name: api-gateway
   cloud:
     gateway:
+      default-filters:
+        - TokenRelay=
       discovery:
         locator:
           enabled: true
           lower-case-service-id: true
       routes:
+        - id: auth-login
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/login, /logout
+          filters:
+            - PreserveHostHeader
+
+        - id: auth-oauth2
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/oauth2/**
+          filters:
+            - PreserveHostHeader
+
+        - id: auth-wellknown
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/.well-known/**
+          filters:
+            - PreserveHostHeader
+
+        - id: auth-userinfo
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/userinfo
+          filters:
+            - PreserveHostHeader
+
         - id: user-service
           uri: lb://USER-SERVICE
           predicates:
@@ -26,15 +57,57 @@ spring:
           predicates:
             - Path=/api/social/**
 
+        - id: notification-service
+          uri: lb://NOTIFICATION-SERVICE
+          predicates:
+            - Path=/api/notifications/**
+
+  security:
+    oauth2:
+      client:
+        registration:
+          openjar-client:
+            provider: openjar
+            client-id: openjar-client
+            client-secret: openjar-secret
+            authorization-grant-type: authorization_code
+            redirect-uri: "http://localhost:8081/login/oauth2/code/openjar-client"
+            scope: openid, profile
+          google:
+            client-id: YOUR_GOOGLE_CLIENT_ID
+            client-secret: YOUR_GOOGLE_CLIENT_SECRET
+            scope: openid, profile, email
+        provider:
+          openjar:
+            issuer-uri: http://localhost:8086
+
 eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka/
   instance:
-    # This forces the Gateway to use IP addresses, which is much more stable
     prefer-ip-address: true
 
 logging:
   level:
+    org.springframework.security: DEBUG
     org.springframework.cloud.gateway: TRACE
-    org.springframework.http.server.reactive: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+# --- ADDED THIS TO ENABLE SWAGGER UI ON GATEWAY ---
+springdoc:
+  swagger-ui:
+    urls:
+      - name: User Service API
+        url: /api/users/v3/api-docs
+      - name: Recipe Service API
+        url: /recipe/v3/api-docs
+      - name: Social Service API
+        url: /api/social/v3/api-docs
+      - name: Notification Service API
+        url: /api/notifications/v3/api-docs

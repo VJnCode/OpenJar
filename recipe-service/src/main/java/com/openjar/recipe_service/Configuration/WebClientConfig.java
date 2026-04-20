@@ -1,4 +1,4 @@
-package com.recipeapp.recipe_service.Configuration;
+package com.openjar.recipe_service.Configuration;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

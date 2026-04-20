@@ -1,4 +1,4 @@
-package com.recipeapp.recipe_service.Event;
+package com.openjar.recipe_service.Event;
 
 
 import lombok.Data;

@@ -1,9 +1,9 @@
-package com.recipeapp.recipe_service.Controller;
+package com.openjar.recipe_service.Controller;
 
 
-import com.recipeapp.recipe_service.DTO.RecipeRequestDto;
-import com.recipeapp.recipe_service.Model.Recipe;
-import com.recipeapp.recipe_service.Service.RecipeService;
+import com.openjar.recipe_service.DTO.RecipeRequestDto;
+import com.openjar.recipe_service.Model.Recipe;
+import com.openjar.recipe_service.Service.RecipeService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

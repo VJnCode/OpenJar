@@ -23,12 +23,6 @@ spring:
       max-file-size: 10MB
       max-request-size: 10MB
 
-  web:
-    error:
-      include-message: always
-      include-binding-errors: always
-      include-stacktrace: always
-
   rabbitmq:
     host: localhost
     port: 5672
@@ -54,3 +48,13 @@ logging:
   level:
     root: INFO
     org.springframework.security: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+springdoc:
+  api-docs:
+    path: /recipe/v3/api-docs

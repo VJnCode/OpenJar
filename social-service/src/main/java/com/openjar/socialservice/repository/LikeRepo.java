@@ -1,7 +1,7 @@
-package com.recipeapp.Like_service.Repository;
+package com.openjar.socialservice.repository;
 
-import com.recipeapp.Like_service.Models.LikeInteraction;
-import com.recipeapp.Like_service.Service.LikeService;
+
+import com.openjar.socialservice.models.LikeInteraction;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

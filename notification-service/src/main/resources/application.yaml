@@ -1,21 +1,38 @@
 server:
   port: 8088
 
+
 eureka:
+  instance:
+    prefer-ip-address: true
+    ip-address: 127.0.0.1
+    hostname: 127.0.0.1
+    instance-id: ${spring.application.name}:${server.port}
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka/
+    fetch-registry: true
+    register-with-eureka: true
 
 spring:
   application:
     name: notification-service
 
-  # Database Configuration
+
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/openjar_notification}
-    username: ${DB_USER:root}
-    password: ${DB_PASS:1234}
+    url: jdbc:mysql://localhost:3306/notification_service
+    username: root
+    password: ROOT
     driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # Database Configuration
+#  datasource:
+#    url: ${DB_URL:jdbc:mysql://localhost:3306/openjar_notification}
+#    username: ${DB_USER:root}
+#    password: ${DB_PASS:1234}
+#    driver-class-name: com.mysql.cj.jdbc.Driver
+
+
 
   jpa:
     hibernate:

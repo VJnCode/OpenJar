@@ -1,10 +1,11 @@
-package com.recipeapp.Like_service.Controller;
+package com.openjar.socialservice.Controller;
 
 
-import com.recipeapp.Like_service.DTO.LikeCountDto;
-import com.recipeapp.Like_service.DTO.LikeDto;
-import com.recipeapp.Like_service.DTO.LikeStatusDto;
-import com.recipeapp.Like_service.Service.LikeService;
+
+import com.openjar.socialservice.dto.LikeDto.LikeCountDto;
+import com.openjar.socialservice.dto.LikeDto.LikeDto;
+import com.openjar.socialservice.dto.LikeDto.LikeStatusDto;
+import com.openjar.socialservice.sevice.LikeService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

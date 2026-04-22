@@ -1,7 +1,7 @@
-package com.recipeapp.Like_service.Models;
+package com.openjar.socialservice.models;
 
-import lombok.Data;
 import jakarta.persistence.*;
+import lombok.Data;
 
 import java.time.LocalDateTime;
 

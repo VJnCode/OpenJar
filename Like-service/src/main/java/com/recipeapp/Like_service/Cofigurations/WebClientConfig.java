@@ -1,4 +1,4 @@
-package com.openjar.socialservice.config;
+package com.recipeapp.Like_service.Cofigurations;
 
 import org.springframework.cloud.client.loadbalancer.LoadBalanced;
 import org.springframework.context.annotation.Bean;

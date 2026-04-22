@@ -1,4 +1,4 @@
-package com.recipeapp.Like_service.Service;
+package com.openjar.socialservice.sevice;
 
 //
 //import com.recipeapp.Like_service.Cofigurations.RabbitMQConfig;
@@ -106,18 +106,18 @@ package com.recipeapp.Like_service.Service;
 //    }
 //}
 
-import com.recipeapp.Like_service.Cofigurations.RabbitMQConfig;
-import com.recipeapp.Like_service.Cofigurations.WebClientConfig;
-import com.recipeapp.Like_service.DTO.*;
-import com.recipeapp.Like_service.Event.LikeEvent;
-import com.recipeapp.Like_service.Repository.LikeRepo;
+import com.openjar.socialservice.Events.LikeEvent;
+import com.openjar.socialservice.config.RabbitMQConfig;
+import com.openjar.socialservice.dto.LikeDto.EmailNotificationDto;
+import com.openjar.socialservice.dto.LikeDto.LikeDto;
+import com.openjar.socialservice.dto.LikeDto.RecipeDTO;
+import com.openjar.socialservice.dto.LikeDto.UserDto;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
-
+import com.openjar.socialservice.repository.LikeRepo;
 import java.util.HashMap;
 
 @Slf4j
@@ -145,7 +145,7 @@ public class LikeService {
         if (alreadyLiked!=0) {
             likeRepository.deleteByUserIdAndRecipeId(userId, recipeId);
             rabbitTemplate.convertAndSend(
-                    RabbitMQConfig.EXCHANGE,
+                    RabbitMQConfig.OPENJAR_EXCHANGE,
                     RabbitMQConfig.LIKE_ROUTING_KEY,
                     new LikeEvent(recipeId, -1)  // ← change this
             );
@@ -154,7 +154,7 @@ public class LikeService {
         } else {
             likeRepository.insertLike(userId, recipeId);
             rabbitTemplate.convertAndSend(
-                    RabbitMQConfig.EXCHANGE,
+                    RabbitMQConfig.OPENJAR_EXCHANGE,
                     RabbitMQConfig.LIKE_ROUTING_KEY,
                     new LikeEvent(recipeId, +1)  // ← change this
             );
@@ -184,16 +184,6 @@ public class LikeService {
 
 
                 triggerNotification(recipe, recipeOwner,likedByUser);
-//                rabbitTemplate.convertAndSend(
-//                        RabbitMQConfig.EXCHANGE,
-//                        RabbitMQConfig.LIKE_Recipe_ROUTING_KEY ,
-//                        new LikeNotificationDto(
-//                                recipeOwner.getUserName(),   // ownerName   → recipe owner
-//                                likedByUser.getUserName(),   // receiverName → who liked
-//                                recipeOwner.getUserEmail(),  // receiverEmail → owner's email
-//                                recipe.getRecipeName()       // recipeName
-//                        )
-//                );
                 log.info("Like notification sent for recipe {}", recipeId);
 
             } catch (Exception e) {
@@ -222,7 +212,7 @@ public class LikeService {
         );
 
         rabbitTemplate.convertAndSend(
-                RabbitMQConfig.EXCHANGE,
+                RabbitMQConfig.OPENJAR_EXCHANGE,
                 RabbitMQConfig.LIKE_Recipe_ROUTING_KEY,
                 notification
         );

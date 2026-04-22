@@ -25,9 +25,13 @@ public class User {
     @Column(name = "password")
     private String password;
 
+    @Column(name = "is_verified")
+    private Boolean isVerified;
+
+    @Column(name = "otp")
+    private String otp;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "is_verified")
-    private boolean isVerified;
 }

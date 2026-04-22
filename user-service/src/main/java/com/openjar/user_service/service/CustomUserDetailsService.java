@@ -27,7 +27,7 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .username(user.getUserEmail())   // ← userEmail is the login identifier
                 .password(user.getPassword())    // ← already BCrypt encoded from registration
                 .authorities(List.of(new SimpleGrantedAuthority("ROLE_USER")))
-                .disabled(!user.isVerified())    // ← unverified users cannot login
+                .disabled(!user.getIsVerified())    // ← unverified users cannot login
                 .accountExpired(false)
                 .accountLocked(false)
                 .credentialsExpired(false)

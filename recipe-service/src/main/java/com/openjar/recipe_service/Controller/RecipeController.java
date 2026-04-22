@@ -12,7 +12,8 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/recipe")
-public class RecipeController {
+public class
+RecipeController {
 
     private RecipeService service;
     public  RecipeController (RecipeService service){

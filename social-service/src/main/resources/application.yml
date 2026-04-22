@@ -1,0 +1,159 @@
+#server:
+#  port: 8087
+#
+#spring:
+#  application:
+#    name: social-service
+#  main:
+#    web-application-type: servlet
+#
+#  datasource:
+#    url: ${DB_URL:jdbc:mysql://localhost:3306/openjar_social}
+#    username: ${DB_USER:root}
+#    password: ${DB_PASS:1234}
+#    driver-class-name: com.mysql.cj.jdbc.Driver
+#
+#  rabbitmq:
+#    host: ${RABBIT_HOST:localhost}
+#    port: 5672
+#    username: ${RABBIT_USER:guest}
+#    password: ${RABBIT_PASS:guest}
+#
+## ADD THIS SECTION BELOW
+#eureka:
+#  client:
+#    service-url:
+#      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+#
+#springdoc:
+#  api-docs:
+#    path: /api/social/v3/api-docs
+#
+#management:
+#  endpoints:
+#    web:
+#      exposure:
+#        include: health
+#
+
+#
+#server:
+#  port: 8087
+#
+#spring:
+#  application:
+#    name: social-service
+#  main:
+#    web-application-type: servlet
+#
+##  datasource:
+##    url: ${DB_URL:jdbc:mysql://localhost:3306/openjar_social}
+##    username: ${DB_USER:root}
+##    password: ${DB_PASS:1234}
+##    driver-class-name: com.mysql.cj.jdbc.Driver
+#
+#datasource:
+#  url: jdbc:mysql://localhost:3306/LikeInteraction
+#  username: root
+#  password: ROOT
+#
+#  jpa:
+#    hibernate:
+#      ddl-auto: validate
+#    show-sql: true
+#
+#  rabbitmq:
+#    host: ${RABBIT_HOST:localhost}
+#    port: 5672
+#    username: ${RABBIT_USER:guest}
+#    password: ${RABBIT_PASS:guest}
+#
+#  # ➕ Added from Like service (only if you handle file uploads in social service)
+#  mvc:
+#    static-path-pattern: /uploads/**
+#
+#  servlet:
+#    multipart:
+#      max-file-size: 10MB
+#      max-request-size: 10MB
+#
+#eureka:
+#  instance:
+#    prefer-ip-address: true
+#    ip-address: 127.0.0.1
+#    hostname: 127.0.0.1
+#    instance-id: ${spring.application.name}:${server.port}
+#  client:
+#    service-url:
+#      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+#    fetch-registry: true
+#    register-with-eureka: true
+#
+#springdoc:
+#  api-docs:
+#    path: /api/social/v3/api-docs
+#
+#management:
+#  endpoints:
+#    web:
+#      exposure:
+#        include: health
+#
+#logging:
+#  level:
+#    root: INFO
+#    org.springframework.security: DEBUG
+
+
+
+server:
+  port: 8087
+
+spring:
+  application:
+    name: social-service
+
+  main:
+    web-application-type: servlet
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/openjar_social   # ← use correct DB
+    username: root
+    password: ROOT
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+  mvc:
+    static-path-pattern: /uploads/**
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+eureka:
+  instance:
+    prefer-ip-address: true
+    ip-address: 127.0.0.1
+    hostname: 127.0.0.1
+    instance-id: ${spring.application.name}:${server.port}
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    fetch-registry: true
+    register-with-eureka: true
+
+logging:
+  level:
+    root: INFO
+    org.springframework.security: DEBUG

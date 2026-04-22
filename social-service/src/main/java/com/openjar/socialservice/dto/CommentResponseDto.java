@@ -18,6 +18,7 @@ public class CommentResponseDto {
     private String userId;
     private String content;
     private LocalDateTime createdAt;
+    private boolean isDeleted;
     private String parentId;
     private List<CommentResponseDto> replies;
 }

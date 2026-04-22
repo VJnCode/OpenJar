@@ -26,6 +26,9 @@ public class Comment {
 
     private String parentId;
 
+    @Column(name = "is_deleted")
+    private boolean isDeleted = false;
+
     @PrePersist
     protected void onCreate() {
         if (this.commentId == null) {

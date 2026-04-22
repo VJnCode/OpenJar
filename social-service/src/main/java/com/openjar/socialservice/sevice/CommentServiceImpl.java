@@ -137,8 +137,11 @@ public class CommentServiceImpl implements CommentService {
                 .map(comment -> CommentResponseDto.builder()
                         .id(comment.getCommentId())
                         .recipeId(String.valueOf(comment.getRecipeId()))
-                        .userId(comment.getUserId())
-                        .content(comment.getContent())
+                        // --- SOFT DELETE MAPPING START ---
+                        .userId(comment.isDeleted() ? "deleted_user" : comment.getUserId())
+                        .content(comment.isDeleted() ? "This comment was deleted." : comment.getContent())
+                        .isDeleted(comment.isDeleted())
+                        // --- SOFT DELETE MAPPING END ---
                         .createdAt(comment.getCreatedAt())
                         .parentId(comment.getParentId())
                         .replies(new ArrayList<>())

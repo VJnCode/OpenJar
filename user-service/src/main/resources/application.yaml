@@ -10,6 +10,10 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME:root}
     password: ${SPRING_DATASOURCE_PASSWORD:1234}
     driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update # <--- FIXES THE "TABLE NOT FOUND" ERROR
+    show-sql: true
 
 springdoc:
   api-docs:

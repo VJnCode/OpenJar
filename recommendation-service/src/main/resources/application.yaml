@@ -1,0 +1,35 @@
+
+spring:
+  application:
+    name: recommendation-service
+
+#  # Connect to RabbitMQ (running on your Windows Docker)
+#  rabbitmq:
+#    host: localhost
+#    port: 5672
+#    username: guest
+#    password: guest
+
+  ai:
+    # Google Gemini Config
+    google:
+      genai: # <--- THIS WAS MISSING
+        api-key: AIzaSyCpiFUpR231sHpwP-wDA2u1yFQQDJAneGU
+          # NEW: This gives the exact same key to the Embedding module!
+        embedding:
+          api-key: AIzaSyCpiFUpR231sHpwP-wDA2u1yFQQDJAneGU
+
+    # Pinecone Config
+    vectorstore:
+      pinecone:
+        api-key: pcsk_7QvKZV_FEoZCJgVeYnBZQaXMvDcyoBL4kqmb75sHi5vaY1cnV776R8ri23KyA2dmE7X3Ds
+        index-name: openjar-index
+
+# Run this service on port 8082 so it doesn't clash with your main app
+server:
+  port: 8082
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/

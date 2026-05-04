@@ -66,5 +66,9 @@ public interface RecipeRepo extends JpaRepository<Recipe,Long> {
     void updateLikeCount(@Param("recipeId") Long recipeId, @Param("delta") int delta);
 
 
+    // ✅ FETCH THE LAST GENERATED ID
+    // This gets the auto-increment ID from the last insert on the current database connection
+    @Query(value = "SELECT LAST_INSERT_ID()", nativeQuery = true)
+    Long getLastInsertId();
 
 }

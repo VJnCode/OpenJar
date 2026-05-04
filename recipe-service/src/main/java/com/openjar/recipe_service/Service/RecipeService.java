@@ -3,6 +3,7 @@ package com.openjar.recipe_service.Service;
 import com.openjar.recipe_service.Configuration.RabbitMQConfig;
 import com.openjar.recipe_service.DTO.EmailNotificationDto;
 import com.openjar.recipe_service.DTO.RecipeRequestDto;
+import com.openjar.recipe_service.DTO.RecipeSyncMessage;
 import com.openjar.recipe_service.DTO.UserDto;
 import com.openjar.recipe_service.Model.Recipe;
 import com.openjar.recipe_service.Repository.RecipeRepo;
@@ -45,12 +46,15 @@ public class RecipeService {
         );
 
         if (rows > 0) {
+            Long newRecipeId = recipeRepo.getLastInsertId();
             try {
                 UserDto ownerProfile = webClient.get()
                         .uri("/api/users/{id}", userId) // Calls localhost:8086/api/users/{id}
                         .retrieve()
                         .bodyToMono(UserDto.class)
                         .block();
+
+                syncToAiProvider(recipe, newRecipeId);
 
                 if (ownerProfile != null && ownerProfile.getUserEmail() != null) {
                     log.info("Successfully fetched profile for: {}", ownerProfile.getUserName());
@@ -141,5 +145,35 @@ public class RecipeService {
 
         log.info("Update successful for Recipe ID: {}", recipeId);
         return recipeRepo.getRecipeById(recipeId);
+
+
+    }
+
+    private void syncToAiProvider(RecipeRequestDto recipeDto, Long newRecipeId) {
+        try {
+            log.info("Preparing AI Sync for Recipe ID: {}", newRecipeId);
+
+            // 1. Create the Sync Message using the ID we got from LAST_INSERT_ID()
+            // This matches the Record we created in the Recommendation Service
+            RecipeSyncMessage aiSyncMessage = new RecipeSyncMessage(
+                    newRecipeId,
+                    recipeDto.getRecipeName(),
+                    recipeDto.getCategory(),
+                    recipeDto.getIngredients()
+            );
+
+            // 2. Send to RabbitMQ
+            // We use the direct queue name "recipe.sync.queue"
+            // to match the @RabbitListener in your Recommendation Service
+            rabbitTemplate.convertAndSend("recipe.sync.queue", aiSyncMessage);
+
+            log.info("Successfully dispatched Recipe [{}] to AI Queue for indexing.", recipeDto.getRecipeName());
+
+        } catch (Exception e) {
+            // We catch the error here so the User Service doesn't crash
+            // if RabbitMQ is temporarily disconnected.
+            log.error("AI Sync failed for Recipe ID {}: {}. Recipe remains saved in DB.",
+                    newRecipeId, e.getMessage());
+        }
     }
 }

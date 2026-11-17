@@ -10,6 +10,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -19,18 +20,15 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByEmail(username)
-                .orElseThrow(() -> new UsernameNotFoundException(
-                        "No user found with email: " + username));
+        String email = username == null ? "" : username.trim().toLowerCase(Locale.ROOT);
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("Bad credentials"));
 
         return org.springframework.security.core.userdetails.User.builder()
-                .username(user.getUserEmail())   // ← userEmail is the login identifier
-                .password(user.getPassword())    // ← already BCrypt encoded from registration
+                .username(user.getUserEmail())
+                .password(user.getPassword())
                 .authorities(List.of(new SimpleGrantedAuthority("ROLE_USER")))
-                .disabled(!user.getIsVerified())    // ← unverified users cannot login
-                .accountExpired(false)
-                .accountLocked(false)
-                .credentialsExpired(false)
+                .disabled(!user.isVerifiedAccount())   // unverified users cannot log in
                 .build();
     }
 }

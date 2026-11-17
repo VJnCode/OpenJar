@@ -1,35 +1,31 @@
-
 spring:
   application:
     name: recommendation-service
 
-#  # Connect to RabbitMQ (running on your Windows Docker)
-#  rabbitmq:
-#    host: localhost
-#    port: 5672
-#    username: guest
-#    password: guest
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    username: ${SPRING_RABBITMQ_USERNAME:guest}
+    password: ${SPRING_RABBITMQ_PASSWORD:guest}
 
   ai:
-    # Google Gemini Config
+    # API keys come ONLY from the environment. Never commit them.
     google:
-      genai: # <--- THIS WAS MISSING
-        api-key: AIzaSyCpiFUpR231sHpwP-wDA2u1yFQQDJAneGU
-          # NEW: This gives the exact same key to the Embedding module!
+      genai:
+        api-key: ${GOOGLE_GENAI_API_KEY}
         embedding:
-          api-key: AIzaSyCpiFUpR231sHpwP-wDA2u1yFQQDJAneGU
+          api-key: ${GOOGLE_GENAI_API_KEY}
 
-    # Pinecone Config
     vectorstore:
       pinecone:
-        api-key: pcsk_7QvKZV_FEoZCJgVeYnBZQaXMvDcyoBL4kqmb75sHi5vaY1cnV776R8ri23KyA2dmE7X3Ds
-        index-name: openjar-index
+        api-key: ${PINECONE_API_KEY}
+        index-name: ${PINECONE_INDEX:openjar-index}
 
-# Run this service on port 8082 so it doesn't clash with your main app
 server:
-  port: 8082
+  port: ${SERVER_PORT:8089}
 
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true

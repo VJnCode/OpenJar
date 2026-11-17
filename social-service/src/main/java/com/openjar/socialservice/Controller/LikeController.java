@@ -1,55 +1,30 @@
 package com.openjar.socialservice.Controller;
 
-
-
-import com.openjar.socialservice.dto.LikeDto.LikeCountDto;
-import com.openjar.socialservice.dto.LikeDto.LikeDto;
-import com.openjar.socialservice.dto.LikeDto.LikeStatusDto;
+import com.openjar.socialservice.config.CurrentUser;
+import com.openjar.socialservice.dto.LikeDto.LikeSummaryDto;
 import com.openjar.socialservice.sevice.LikeService;
-import org.springframework.http.ResponseEntity;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
-
+/** Lives under /api/social so the gateway can route it (the old /like path was unreachable). */
 @RestController
-@RequestMapping("/like")
+@RequestMapping("/api/social/likes")
+@RequiredArgsConstructor
 public class LikeController {
 
-    private LikeService likeService;
-    public LikeController(LikeService likeService){
-        this.likeService=likeService;
+    private final LikeService likeService;
+
+    /** Toggle the current user's like on a recipe. */
+    @PostMapping("/{recipeId}")
+    public LikeSummaryDto toggleLike(@PathVariable Long recipeId, @AuthenticationPrincipal Jwt jwt) {
+        return likeService.toggleLike(recipeId, CurrentUser.from(jwt));
     }
 
-    @PostMapping("/{recipeId}/{userId}")
-    public ResponseEntity<LikeDto> toggleLike(
-            @PathVariable Long recipeId,
-          @PathVariable String userId) {
-        LikeDto response = likeService.toggleLike(userId, recipeId);
-        return ResponseEntity.ok(response);
-    }
-
-    // Get total like count for a recipe
+    /** Public count; also tells a logged-in caller whether they liked it. */
     @GetMapping("/{recipeId}")
-    public ResponseEntity<LikeCountDto> getLikeCount(
-            @PathVariable Long recipeId) {
-        long count = likeService.getLikeCount(recipeId);
-        return ResponseEntity.ok(LikeCountDto.of( count));
+    public LikeSummaryDto getLikes(@PathVariable Long recipeId, @AuthenticationPrincipal Jwt jwt) {
+        return likeService.getSummary(recipeId, CurrentUser.userIdOrNull(jwt));
     }
-
-    // Check if a specific user has liked a recipe
-    @GetMapping("/{recipeId}/{userId}/status")
-    public ResponseEntity<LikeStatusDto> getLikeStatus(
-            @PathVariable Long recipeId,
-           @PathVariable String userId) {
-        Long liked = likeService.hasUserLiked(userId, recipeId);
-        if(liked!=0){
-            return ResponseEntity.ok(LikeStatusDto.of(true));
-        }
-        return ResponseEntity.ok(LikeStatusDto.of( false));
-    }
-
-
-
-
-
-
 }

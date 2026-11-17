@@ -1,179 +1,121 @@
 package com.openjar.recipe_service.Service;
 
 import com.openjar.recipe_service.Configuration.RabbitMQConfig;
+import com.openjar.recipe_service.Controller.RecipeController.CurrentUser;
 import com.openjar.recipe_service.DTO.EmailNotificationDto;
 import com.openjar.recipe_service.DTO.RecipeRequestDto;
 import com.openjar.recipe_service.DTO.RecipeSyncMessage;
-import com.openjar.recipe_service.DTO.UserDto;
 import com.openjar.recipe_service.Model.Recipe;
 import com.openjar.recipe_service.Repository.RecipeRepo;
-import lombok.extern.slf4j.Slf4j; // 1. Added Slf4j annotation
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Service
-@Slf4j // 2. This creates the 'log' object automatically via Lombok
+@RequiredArgsConstructor
 public class RecipeService {
 
     private final RecipeRepo recipeRepo;
-    private final WebClient webClient;
     private final RabbitTemplate rabbitTemplate;
 
-    public RecipeService(RecipeRepo recipeRepo, RabbitTemplate rabbitTemplate, WebClient.Builder webClientBuilder) {
-        this.recipeRepo = recipeRepo;
-        this.rabbitTemplate = rabbitTemplate;
-        this.webClient = webClientBuilder.baseUrl("http://localhost:8086").build();
+    public List<Recipe> getAllRecipes() {
+        return recipeRepo.findAllByOrderByRecipeIdDesc();
     }
 
-    @Transactional
-    public String saveRecipe(RecipeRequestDto recipe, String userId) {
-        log.info("Process started: Saving recipe for User ID: {}", userId);
-
-        int rows = recipeRepo.insertRecipe(
-                recipe.getRecipeName(),
-                recipe.getPrepTime(),
-                recipe.getCategory(),
-                recipe.getIngredients(),
-                recipe.getRecipeInstructions(),
-                recipe.getRecipeImageUrl(),
-                userId
-        );
-
-        if (rows > 0) {
-            Long newRecipeId = recipeRepo.getLastInsertId();
-            try {
-                UserDto ownerProfile = webClient.get()
-                        .uri("/api/users/{id}", userId) // Calls localhost:8086/api/users/{id}
-                        .retrieve()
-                        .bodyToMono(UserDto.class)
-                        .block();
-
-                syncToAiProvider(recipe, newRecipeId);
-
-                if (ownerProfile != null && ownerProfile.getUserEmail() != null) {
-                    log.info("Successfully fetched profile for: {}", ownerProfile.getUserName());
-
-                    triggerNotification(recipe, ownerProfile);
-
-                    return "Recipe added successfully for " + ownerProfile.getUserName();
-                }
-            } catch (Exception e) {
-                log.error("Failed to fetch user from Route: {}", e.getMessage());
-                throw new RuntimeException("User Service communication failed");
-            }
-        }
-        return "Database error: Recipe could not be saved.";
-    }
-
-    private void triggerNotification(RecipeRequestDto recipe, UserDto user) {
-        Map<String, Object> model = new HashMap<>();
-        model.put("userName", user.getUserName());
-        model.put("recipeName", recipe.getRecipeName());
-        model.put("category", recipe.getCategory());
-        model.put("prepTime", recipe.getPrepTime());
-        model.put("recipeImageUrl", recipe.getRecipeImageUrl());
-
-        EmailNotificationDto notification = new EmailNotificationDto(
-                user.getUserEmail(),
-                "Success! '" + recipe.getRecipeName() + "' is now on OpenJar",
-                "recipe-created", // The HTML file name
-                model
-        );
-
-        rabbitTemplate.convertAndSend(
-                RabbitMQConfig.EXCHANGE,
-                RabbitMQConfig.N_ROUTING_KEY,
-                notification
-        );
-
-        log.info("Recipe creation email queued for {}", user.getUserEmail());
-    }
-
-    public List<Recipe> getAllRecipe() {
-        log.info("Fetching all recipes...");
-        return recipeRepo.getAllRecipe();
+    public List<Recipe> getRecipesByUser(String userId) {
+        return recipeRepo.findByUserIdOrderByRecipeIdDesc(userId);
     }
 
     public Recipe getRecipeById(long id) {
-        log.info("Fetching recipe details for ID: {}", id);
-        return recipeRepo.getRecipeById(id);
+        return recipeRepo.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found"));
+    }
+
+    /**
+     * Persists the recipe first; notifications and AI indexing are best-effort side effects
+     * that can never roll back or fail the user's request.
+     */
+    public Recipe saveRecipe(RecipeRequestDto dto, CurrentUser owner) {
+        Recipe recipe = new Recipe();
+        apply(recipe, dto);
+        recipe.setUserId(owner.userId());
+        Recipe saved = recipeRepo.save(recipe);
+        log.info("Recipe {} created by user {}", saved.getRecipeId(), owner.userId());
+
+        syncToAiProvider(saved);
+        notifyOwner(saved, owner);
+        return saved;
     }
 
     @Transactional
-    public String deleteRecipeById(long recipeId) {
-        log.info("Initiating deletion for Recipe ID: {}", recipeId);
-        Recipe recipe = recipeRepo.getRecipeById(recipeId);
-
-        if (recipe == null) {
-            log.warn("Delete aborted. Recipe ID {} does not exist.", recipeId);
-            throw new RuntimeException("Recipe not found");
-        }
-
-        int rows = recipeRepo.deleteRecipeById(recipeId);
-        if (rows > 0) {
-            log.info("Successfully deleted Recipe ID: {}", recipeId);
-            return "Recipe deleted successfully";
-        }
-        return "Recipe was not deleted";
+    public Recipe updateRecipeById(long recipeId, RecipeRequestDto dto, String userId) {
+        Recipe recipe = getOwnedRecipe(recipeId, userId);
+        apply(recipe, dto);
+        return recipeRepo.save(recipe);
     }
 
     @Transactional
-    public Recipe updateRecipeById(long recipeId, RecipeRequestDto updatedRecipe, String userId) {
-        log.info("Updating Recipe ID: {} for User ID: {}", recipeId, userId);
-
-        int rows = recipeRepo.updateRecipe(
-                updatedRecipe.getRecipeName(),
-                updatedRecipe.getPrepTime(),
-                updatedRecipe.getCategory(),
-                updatedRecipe.getIngredients(),
-                updatedRecipe.getRecipeInstructions(),
-                updatedRecipe.getRecipeImageUrl(),
-                userId,
-                recipeId
-        );
-
-        if (rows == 0) {
-            log.error("Update failed. Recipe ID {} not found.", recipeId);
-            throw new RuntimeException("Recipe not found");
-        }
-
-        log.info("Update successful for Recipe ID: {}", recipeId);
-        return recipeRepo.getRecipeById(recipeId);
-
-
+    public void deleteRecipeById(long recipeId, String userId) {
+        Recipe recipe = getOwnedRecipe(recipeId, userId);
+        recipeRepo.delete(recipe);
+        log.info("Recipe {} deleted by owner {}", recipeId, userId);
     }
 
-    private void syncToAiProvider(RecipeRequestDto recipeDto, Long newRecipeId) {
+    private Recipe getOwnedRecipe(long recipeId, String userId) {
+        Recipe recipe = getRecipeById(recipeId);
+        if (!recipe.getUserId().equals(userId)) {
+            log.warn("User {} tried to modify recipe {} owned by {}", userId, recipeId, recipe.getUserId());
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only modify your own recipes");
+        }
+        return recipe;
+    }
+
+    private static void apply(Recipe recipe, RecipeRequestDto dto) {
+        recipe.setRecipeName(dto.getRecipeName().trim());
+        recipe.setPrepTime(dto.getPrepTime());
+        recipe.setCategory(dto.getCategory().trim());
+        recipe.setIngredients(dto.getIngredients());
+        recipe.setRecipeInstructions(dto.getRecipeInstructions());
+        String image = dto.getRecipeImageUrl();
+        recipe.setRecipeImageUrl(image == null || image.isBlank() ? null : image.trim());
+    }
+
+    private void notifyOwner(Recipe recipe, CurrentUser owner) {
+        if (owner.email() == null) {
+            return;
+        }
         try {
-            log.info("Preparing AI Sync for Recipe ID: {}", newRecipeId);
+            Map<String, Object> model = new HashMap<>();
+            model.put("userName", owner.userName());
+            model.put("recipeName", recipe.getRecipeName());
+            model.put("category", recipe.getCategory());
+            model.put("prepTime", recipe.getPrepTime());
+            model.put("recipeImageUrl", recipe.getRecipeImageUrl());
 
-            // 1. Create the Sync Message using the ID we got from LAST_INSERT_ID()
-            // This matches the Record we created in the Recommendation Service
-            RecipeSyncMessage aiSyncMessage = new RecipeSyncMessage(
-                    newRecipeId,
-                    recipeDto.getRecipeName(),
-                    recipeDto.getCategory(),
-                    recipeDto.getIngredients()
-            );
-
-            // 2. Send to RabbitMQ
-            // We use the direct queue name "recipe.sync.queue"
-            // to match the @RabbitListener in your Recommendation Service
-            rabbitTemplate.convertAndSend("recipe.sync.queue", aiSyncMessage);
-
-            log.info("Successfully dispatched Recipe [{}] to AI Queue for indexing.", recipeDto.getRecipeName());
-
+            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.N_ROUTING_KEY,
+                    new EmailNotificationDto(owner.email(),
+                            "Success! '" + recipe.getRecipeName() + "' is now on OpenJar",
+                            "recipe-created", model));
         } catch (Exception e) {
-            // We catch the error here so the User Service doesn't crash
-            // if RabbitMQ is temporarily disconnected.
-            log.error("AI Sync failed for Recipe ID {}: {}. Recipe remains saved in DB.",
-                    newRecipeId, e.getMessage());
+            log.error("Could not queue recipe-created email for recipe {}: {}", recipe.getRecipeId(), e.getMessage());
+        }
+    }
+
+    private void syncToAiProvider(Recipe recipe) {
+        try {
+            rabbitTemplate.convertAndSend("recipe.sync.queue", new RecipeSyncMessage(
+                    recipe.getRecipeId(), recipe.getRecipeName(), recipe.getCategory(), recipe.getIngredients()));
+        } catch (Exception e) {
+            log.error("AI sync failed for recipe {}: {}", recipe.getRecipeId(), e.getMessage());
         }
     }
 }

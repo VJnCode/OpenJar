@@ -1,11 +1,16 @@
 package com.openjar.socialservice.sevice;
 
-import com.openjar.socialservice.dto.CommentRequestDto;
+import com.openjar.socialservice.config.CurrentUser;
 import com.openjar.socialservice.dto.CommentResponseDto;
+
 import java.util.List;
 
 public interface CommentService {
-    CommentResponseDto postComment(CommentRequestDto requestDto);
-    CommentResponseDto postReply(CommentRequestDto dto, String recipeIdStr, String parentId, String userId);
-    List<CommentResponseDto> getCommentsByRecipe(String recipeIdStr);
+    CommentResponseDto postComment(Long recipeId, String content, CurrentUser author);
+
+    CommentResponseDto postReply(Long recipeId, String parentId, String content, CurrentUser author);
+
+    List<CommentResponseDto> getCommentsByRecipe(Long recipeId);
+
+    void deleteComment(String commentId, CurrentUser requester);
 }

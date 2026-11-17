@@ -1,19 +1,50 @@
 server:
   port: ${SERVER_PORT:8086}
+  error:
+    include-message: never
+    include-stacktrace: never
 
 spring:
   application:
     name: user-service
   datasource:
-    # This checks for SPRING_DATASOURCE_URL env var, otherwise defaults to localhost
     url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/OpenJar?createDatabaseIfNotExist=true}
     username: ${SPRING_DATASOURCE_USERNAME:root}
-    password: ${SPRING_DATASOURCE_PASSWORD:1234}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
-      ddl-auto: update # <--- FIXES THE "TABLE NOT FOUND" ERROR
-    show-sql: true
+      ddl-auto: update
+    show-sql: false
+    open-in-view: false
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    username: ${SPRING_RABBITMQ_USERNAME:guest}
+    password: ${SPRING_RABBITMQ_PASSWORD:guest}
+
+openjar:
+  dev:
+    # LOCAL DEVELOPMENT ONLY: also print verification codes to the log when no SMTP is configured.
+    log-otp: ${DEV_LOG_OTP:false}
+  frontend-url: ${FRONTEND_URL:http://localhost:5173}
+  # "Continue with Google" appears only when both are set.
+  # Google Cloud Console -> Credentials -> OAuth client ID (Web application), redirect URI:
+  #   ${AUTH_ISSUER}/login/oauth2/code/google   (e.g. http://localhost:8086/login/oauth2/code/google)
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:}
+    client-secret: ${GOOGLE_CLIENT_SECRET:}
+  # Shared secret for service-to-service calls to /internal/** (must match the other services).
+  internal-token: ${INTERNAL_API_TOKEN:}
+  auth:
+    # Public (browser-facing) URL of this authorization server. Must match the gateway / resource servers.
+    issuer: ${AUTH_ISSUER:http://localhost:8086}
+    client-id: ${OAUTH_CLIENT_ID:openjar-client}
+    client-secret: ${OAUTH_CLIENT_SECRET}
+    redirect-uri: ${OAUTH_REDIRECT_URI:http://localhost:8081/login/oauth2/code/openjar-client}
+    jwt:
+      # Optional: DER-encoded RSA keys mounted at runtime (never committed). Ephemeral key if unset.
+      public-key-path: ${JWT_PUBLIC_KEY_PATH:}
+      private-key-path: ${JWT_PRIVATE_KEY_PATH:}
 
 springdoc:
   api-docs:
@@ -26,10 +57,21 @@ management:
         include: health
   endpoint:
     health:
-      show-details: always
+      show-details: never
 
 eureka:
   client:
     service-url:
-      # This is the critical fix for the logs you're seeing
       defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+logging:
+  pattern:
+    # Every line carries the X-Request-Id of the request it belongs to.
+    level: "%5p [%X{requestId:-}]"
+  level:
+    # Per-request, per-operation and per-DB-call timings. Set any of these to OFF or DEBUG to quieten.
+    openjar.timing.http: INFO
+    openjar.timing.op: INFO
+    openjar.timing.db: INFO

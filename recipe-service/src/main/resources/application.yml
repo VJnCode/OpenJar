@@ -3,46 +3,55 @@ spring:
     name: recipe-service
 
   datasource:
-    url: jdbc:mysql://localhost:3306/RecipeService
-    username: root
-    password: ROOT
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/RecipeService?createDatabaseIfNotExist=true}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD}
 
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
+    show-sql: false
+    open-in-view: false
 
-  mvc:
-    static-path-pattern: /uploads/**
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    username: ${SPRING_RABBITMQ_USERNAME:guest}
+    password: ${SPRING_RABBITMQ_PASSWORD:guest}
+    listener:
+      simple:
+        # A malformed message must not be redelivered forever.
+        default-requeue-rejected: false
 
-  servlet:
-    multipart:
-      max-file-size: 10MB
-      max-request-size: 10MB
-
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Keys are fetched from user-service; the "iss" claim must equal the public issuer.
+          jwk-set-uri: ${AUTH_INTERNAL_URL:http://localhost:8086}/oauth2/jwks
+          issuer-uri: ${AUTH_ISSUER:http://localhost:8086}
 
 server:
-  port: 8082
+  port: ${SERVER_PORT:8082}
+  error:
+    include-message: never
+    include-stacktrace: never
 
 eureka:
   instance:
     prefer-ip-address: true
-    ip-address: 127.0.0.1
-    hostname: 127.0.0.1
-    instance-id: recipe-service:8082
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
-    fetch-registry: true
-    register-with-eureka: true
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
 
 logging:
+  pattern:
+    # Every line carries the X-Request-Id of the request it belongs to.
+    level: "%5p [%X{requestId:-}]"
   level:
-    root: INFO
-    org.springframework.security: DEBUG
+    # Per-request, per-operation and per-DB-call timings. Set any of these to OFF or DEBUG to quieten.
+    openjar.timing.http: INFO
+    openjar.timing.op: INFO
+    openjar.timing.db: INFO
 
 management:
   endpoints:

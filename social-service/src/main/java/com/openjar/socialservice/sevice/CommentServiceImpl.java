@@ -1,169 +1,135 @@
 package com.openjar.socialservice.sevice;
 
-import com.openjar.socialservice.dto.*;
+import com.openjar.socialservice.config.CurrentUser;
+import com.openjar.socialservice.config.RabbitMQConfig;
+import com.openjar.socialservice.dto.CommentResponseDto;
+import com.openjar.socialservice.dto.EmailNotificationDto;
+import com.openjar.socialservice.dto.RecipeResponseDto;
 import com.openjar.socialservice.models.Comment;
 import com.openjar.socialservice.repository.CommentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class CommentServiceImpl implements CommentService {
 
     private final CommentRepository commentRepository;
     private final RabbitTemplate rabbitTemplate;
-    private final WebClient.Builder webClientBuilder;
+    private final PlatformClient platformClient;
+
+    @Value("${openjar.frontend-url:http://localhost:5173}")
+    private String frontendUrl;
+
+    @Override
+    public CommentResponseDto postComment(Long recipeId, String content, CurrentUser author) {
+        Optional<RecipeResponseDto> recipe = platformClient.findRecipe(recipeId); // 404s if it doesn't exist
+        Comment saved = save(recipeId, null, content, author);
+        recipe.ifPresent(r -> notifyRecipeOwner(r, author, content));
+        return toDto(saved);
+    }
+
+    @Override
+    public CommentResponseDto postReply(Long recipeId, String parentId, String content, CurrentUser author) {
+        Comment parent = commentRepository.findById(parentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comment not found"));
+        if (!recipeId.equals(parent.getRecipeId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Reply must belong to the same recipe");
+        }
+        if (parent.isDeleted()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot reply to a deleted comment");
+        }
+        return toDto(save(recipeId, parentId, content, author));
+    }
+
+    @Override
+    public List<CommentResponseDto> getCommentsByRecipe(Long recipeId) {
+        List<CommentResponseDto> all = commentRepository.findByRecipeIdOrderByCreatedAtAsc(recipeId)
+                .stream().map(this::toDto).toList();
+
+        Map<String, CommentResponseDto> byId = new HashMap<>();
+        all.forEach(dto -> byId.put(dto.getId(), dto));
+
+        List<CommentResponseDto> roots = new ArrayList<>();
+        for (CommentResponseDto dto : all) {
+            CommentResponseDto parent = dto.getParentId() == null ? null : byId.get(dto.getParentId());
+            if (parent != null) {
+                parent.getReplies().add(dto);
+            } else if (dto.getParentId() == null) {
+                roots.add(dto);
+            }
+        }
+        return roots;
+    }
 
     @Override
     @Transactional
-    public CommentResponseDto postComment(CommentRequestDto requestDto) {
-        log.info("Processing top-level comment for Recipe: {}", requestDto.getRecipeId());
+    public void deleteComment(String commentId, CurrentUser requester) {
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comment not found"));
+        if (!comment.getUserId().equals(requester.userId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only delete your own comments");
+        }
+        comment.setDeleted(true);   // soft delete keeps reply threads intact
+        commentRepository.save(comment);
+    }
 
-        String generatedId = UUID.randomUUID().toString();
-        Long recipeId = Long.parseLong(requestDto.getRecipeId());
+    // ---------------------------------------------------------------------------------------
 
-        try {
-            commentRepository.insertCommentNative(
-                    generatedId,
-                    recipeId,
-                    requestDto.getUserId(),
-                    requestDto.getContent(),
-                    null
-            );
+    private Comment save(Long recipeId, String parentId, String content, CurrentUser author) {
+        return commentRepository.save(Comment.builder()
+                .recipeId(recipeId)
+                .parentId(parentId)
+                .userId(author.userId())
+                .userName(author.userName())
+                .content(content.trim())
+                .build());
+    }
 
-            // Fetch Recipe Details to get the Owner's Info and Title
-            RecipeResponseDto recipe = webClientBuilder.build()
-                    .get()
-                    .uri("http://localhost:8080/recipe/{id}", recipeId)
-                    .retrieve()
-                    .bodyToMono(RecipeResponseDto.class)
-                    .block();
-
-
-            if (recipe != null && recipe.getUserId() != null) {
-                UserResponseDto userProfile = webClientBuilder.build()
-                        .get()
-                        .uri("http://localhost:8086/api/users/{id}", recipe.getUserId())
-                        .retrieve()
-                        .bodyToMono(UserResponseDto.class)
-                        .block();
-
+    /** Best effort: a failure here must never lose the user's comment. */
+    private void notifyRecipeOwner(RecipeResponseDto recipe, CurrentUser author, String content) {
+        if (recipe.getUserId() == null || recipe.getUserId().equals(author.userId())) {
+            return; // don't email people about their own comments
+        }
+        platformClient.findUserWithEmail(recipe.getUserId()).ifPresent(owner -> {
+            try {
                 Map<String, Object> model = new HashMap<>();
-
-                String displayName = (userProfile != null) ? userProfile.getUserName() : "Chef";
-                String targetEmail = (userProfile != null) ? userProfile.getUserEmail() : "varunraj9790@gmail.com";
-
-                model.put("userName", displayName);
+                model.put("userName", owner.getUserName());
                 model.put("recipeTitle", recipe.getRecipeName());
-                model.put("commentContent", requestDto.getContent());
-                model.put("recipeUrl", "http://localhost:3000/recipes/" + recipeId);
+                model.put("commentContent", content);
+                model.put("commenterName", author.userName());
+                model.put("recipeUrl", frontendUrl + "/recipe/" + recipe.getRecipeId());
                 model.put("recipeImageUrl", recipe.getRecipeImageUrl());
 
-                EmailNotificationDto notification = new EmailNotificationDto(
-                        targetEmail,
-                        "New Comment on " + recipe.getRecipeName(),
-                        "comment-notification",
-                        model
-                );
-
-                rabbitTemplate.convertAndSend("openjar_exchange", "notification_routing_key", notification);
-                log.info("Notification sent to {} for recipe {}", displayName, recipe.getRecipeName());
+                rabbitTemplate.convertAndSend(RabbitMQConfig.OPENJAR_EXCHANGE, RabbitMQConfig.NOTIFICATION_ROUTING_KEY,
+                        new EmailNotificationDto(owner.getUserEmail(),
+                                "New comment on " + recipe.getRecipeName(), "comment-notification", model));
+            } catch (Exception e) {
+                log.error("Could not queue comment notification for recipe {}: {}", recipe.getRecipeId(), e.getMessage());
             }
-
-            // Return the newly created comment DTO
-            return CommentResponseDto.builder()
-                    .id(generatedId)
-                    .recipeId(requestDto.getRecipeId())
-                    .userId(requestDto.getUserId())
-                    .content(requestDto.getContent())
-                    .parentId(null)
-                    .createdAt(LocalDateTime.now())
-                    .build();
-
-        } catch (Exception e) {
-            log.error("Transaction failed: {}", e.getMessage());
-            throw new RuntimeException("Flow failed: " + e.getMessage());
-        }
+        });
     }
 
-    @Override
-    @Transactional
-    public CommentResponseDto postReply(CommentRequestDto dto, String recipeIdStr, String parentId, String userId) {
-        log.info("User {} is replying to parent comment {}", userId, parentId);
-
-        String newReplyId = UUID.randomUUID().toString();
-        Long recipeId = Long.parseLong(recipeIdStr);
-
-        int rows = commentRepository.insertCommentNative(
-                newReplyId,
-                recipeId,
-                userId,
-                dto.getContent(),
-                parentId
-        );
-
-        if (rows == 0) {
-            throw new RuntimeException("Could not post reply. Check parent ID.");
-        }
-
-        // Return the newly created reply DTO
+    private CommentResponseDto toDto(Comment c) {
         return CommentResponseDto.builder()
-                .id(newReplyId)
-                .recipeId(recipeIdStr)
-                .userId(userId)
-                .content(dto.getContent())
-                .parentId(parentId)
-                .createdAt(LocalDateTime.now())
+                .id(c.getCommentId())
+                .recipeId(String.valueOf(c.getRecipeId()))
+                .userId(c.isDeleted() ? null : c.getUserId())
+                .userName(c.isDeleted() ? null : c.getUserName())
+                .content(c.isDeleted() ? "This comment was deleted." : c.getContent())
+                .isDeleted(c.isDeleted())
+                .createdAt(c.getCreatedAt())
+                .parentId(c.getParentId())
+                .replies(new ArrayList<>())
                 .build();
-    }
-
-    @Override
-    public List<CommentResponseDto> getCommentsByRecipe(String recipeIdStr) {
-        Long recipeId = Long.parseLong(recipeIdStr);
-        log.info("Building comment tree for Recipe: {}", recipeId);
-
-        List<Comment> allComments = commentRepository.findByRecipeIdNative(recipeId);
-
-        List<CommentResponseDto> allDtos = allComments.stream()
-                .map(comment -> CommentResponseDto.builder()
-                        .id(comment.getCommentId())
-                        .recipeId(String.valueOf(comment.getRecipeId()))
-                        // --- SOFT DELETE MAPPING START ---
-                        .userId(comment.isDeleted() ? "deleted_user" : comment.getUserId())
-                        .content(comment.isDeleted() ? "This comment was deleted." : comment.getContent())
-                        .isDeleted(comment.isDeleted())
-                        // --- SOFT DELETE MAPPING END ---
-                        .createdAt(comment.getCreatedAt())
-                        .parentId(comment.getParentId())
-                        .replies(new ArrayList<>())
-                        .build())
-                .collect(Collectors.toList());
-
-        Map<String, CommentResponseDto> dtoMap = allDtos.stream()
-                .collect(Collectors.toMap(CommentResponseDto::getId, dto -> dto));
-
-        List<CommentResponseDto> rootComments = new ArrayList<>();
-
-        for (CommentResponseDto dto : allDtos) {
-            if (dto.getParentId() == null) {
-                rootComments.add(dto);
-            } else {
-                CommentResponseDto parent = dtoMap.get(dto.getParentId());
-                if (parent != null) {
-                    parent.getReplies().add(dto);
-                }
-            }
-        }
-
-        return rootComments;
     }
 }

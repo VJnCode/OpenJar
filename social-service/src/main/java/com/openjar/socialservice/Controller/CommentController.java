@@ -1,5 +1,6 @@
 package com.openjar.socialservice.Controller;
 
+import com.openjar.socialservice.config.CurrentUser;
 import com.openjar.socialservice.dto.ApiResponseDto;
 import com.openjar.socialservice.dto.CommentRequestDto;
 import com.openjar.socialservice.dto.CommentResponseDto;
@@ -8,7 +9,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -20,46 +24,37 @@ public class CommentController {
     private final CommentService commentService;
 
     @PostMapping("/add")
-    public ResponseEntity<ApiResponseDto<CommentResponseDto>> add(@Valid @RequestBody CommentRequestDto dto) {
-        CommentResponseDto savedComment = commentService.postComment(dto);
-
-        ApiResponseDto<CommentResponseDto> response = ApiResponseDto.<CommentResponseDto>builder()
-                .message("Comment Added Successfully")
-                .success(true)
-                .data(savedComment)
-                .build();
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    public ResponseEntity<ApiResponseDto<CommentResponseDto>> add(@Valid @RequestBody CommentRequestDto dto,
+                                                                  @AuthenticationPrincipal Jwt jwt) {
+        if (dto.getRecipeId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Recipe id is required");
+        }
+        CommentResponseDto saved = commentService.postComment(
+                Long.parseLong(dto.getRecipeId()), dto.getContent(), CurrentUser.from(jwt));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ok("Comment added", saved));
     }
 
     @GetMapping("/recipe/{recipeId}")
-    public ResponseEntity<ApiResponseDto<List<CommentResponseDto>>> getCommentsByRecipe(@PathVariable String recipeId) {
-        List<CommentResponseDto> comments = commentService.getCommentsByRecipe(recipeId);
-
-        ApiResponseDto<List<CommentResponseDto>> response = ApiResponseDto.<List<CommentResponseDto>>builder()
-                .message("Comments fetched successfully")
-                .success(true)
-                .data(comments)
-                .build();
-
-        return ResponseEntity.ok(response);
+    public ApiResponseDto<List<CommentResponseDto>> getCommentsByRecipe(@PathVariable Long recipeId) {
+        return ok("Comments fetched", commentService.getCommentsByRecipe(recipeId));
     }
 
     @PostMapping("/{recipeId}/{parentId}")
-    public ResponseEntity<ApiResponseDto<CommentResponseDto>> saveReply(
-            @PathVariable String recipeId,
-            @PathVariable String parentId,
-            @RequestBody CommentRequestDto dto,
-            @RequestHeader("X-User-Id") String userId) {
+    public ResponseEntity<ApiResponseDto<CommentResponseDto>> reply(@PathVariable Long recipeId,
+                                                                    @PathVariable String parentId,
+                                                                    @Valid @RequestBody CommentRequestDto dto,
+                                                                    @AuthenticationPrincipal Jwt jwt) {
+        CommentResponseDto saved = commentService.postReply(recipeId, parentId, dto.getContent(), CurrentUser.from(jwt));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ok("Reply posted", saved));
+    }
 
-        CommentResponseDto savedReply = commentService.postReply(dto, recipeId, parentId, userId);
+    @DeleteMapping("/{commentId}")
+    public ApiResponseDto<Void> delete(@PathVariable String commentId, @AuthenticationPrincipal Jwt jwt) {
+        commentService.deleteComment(commentId, CurrentUser.from(jwt));
+        return ok("Comment deleted", null);
+    }
 
-        ApiResponseDto<CommentResponseDto> response = ApiResponseDto.<CommentResponseDto>builder()
-                .message("Reply posted successfully!")
-                .success(true)
-                .data(savedReply)
-                .build();
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    private static <T> ApiResponseDto<T> ok(String message, T data) {
+        return ApiResponseDto.<T>builder().message(message).success(true).data(data).build();
     }
 }

@@ -27,7 +27,17 @@ public class EmailService {
      * Processes and sends an HTML email based on a Thymeleaf template.
      * * @param request The DTO containing recipient, subject, template name, and data map.
      */
+    /** Only these templates may be rendered; anything else in a message is rejected. */
+    private static final java.util.Set<String> ALLOWED_TEMPLATES = java.util.Set.of(
+            "otp-template", "recipe-created", "comment-notification", "like-created", "reciepe-alert");
+
     public void sendHtmlNotification(EmailNotificationDto request) {
+        if (request == null || request.getRecipientEmail() == null
+                || !ALLOWED_TEMPLATES.contains(request.getTemplateName())) {
+            log.warn("Rejected notification with unknown template '{}'",
+                    request == null ? null : request.getTemplateName());
+            return;
+        }
         NotificationLog logEntry = NotificationLog.builder()
                 .recipient(request.getRecipientEmail())
                 .subject(request.getSubject())

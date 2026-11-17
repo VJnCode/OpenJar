@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:attr="data-theme=${theme}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Sign in · OpenJar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    // Apply a remembered manual theme before first paint (the app's choice, via data-theme, wins).
+    try {
+      var t = localStorage.getItem('oj-theme');
+      if (!document.documentElement.dataset.theme && (t === 'dark' || t === 'light')) document.documentElement.dataset.theme = t;
+    } catch (e) {}
+  </script>
+  <style>
+    :root {
+      --brand: #C8472B; --brand-dark: #a93a22; --brand-soft: #fbeae5;
+      --ink: #1c1917; --muted: #78716c; --line: #e7e5e4; --bg: #fffdfb; --card: #ffffff;
+      --field: #fafaf9; --ok: #15803d; --ok-bg: #f0fdf4; --err: #b91c1c; --err-bg: #fef2f2;
+      --shadow: 0 1px 2px rgba(28,25,23,.04), 0 12px 40px -12px rgba(28,25,23,.18);
+      color-scheme: light;
+    }
+    /* Dark theme: an explicit choice (data-theme) wins; otherwise follow the operating system. */
+    :root[data-theme="dark"] {
+      --ink: #f5f5f4; --muted: #a8a29e; --line: #3a3532; --bg: #141110; --card: #1c1917;
+      --field: #24201e; --brand-soft: #3a1d16; --ok-bg: #0f2a19; --ok: #4ade80; --err-bg: #2d1414; --err: #fca5a5;
+      --shadow: 0 12px 40px -12px rgba(0,0,0,.6); color-scheme: dark;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --ink: #f5f5f4; --muted: #a8a29e; --line: #3a3532; --bg: #141110; --card: #1c1917;
+        --field: #24201e; --brand-soft: #3a1d16; --ok-bg: #0f2a19; --ok: #4ade80; --err-bg: #2d1414; --err: #fca5a5;
+        --shadow: 0 12px 40px -12px rgba(0,0,0,.6); color-scheme: dark;
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif; color: var(--ink); background: var(--bg);
+      -webkit-font-smoothing: antialiased; display: grid; grid-template-columns: 1.1fr 1fr; min-height: 100vh;
+      transition: background .3s, color .3s;
+    }
+    a { color: var(--brand); font-weight: 600; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ---------- Left: animated food showcase ---------- */
+    .showcase { position: relative; overflow: hidden; background: #1c1917; color: #fff; }
+    .slide { position: absolute; inset: 0; background-size: cover; background-position: center;
+             opacity: 0; transform: scale(1.12); transition: opacity 1.4s ease; }
+    .slide.active { opacity: 1; animation: kenburns 9s ease-out forwards; }
+    @keyframes kenburns { from { transform: scale(1.12); } to { transform: scale(1); } }
+    .showcase::after { content: ""; position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(0,0,0,.45) 0%, rgba(0,0,0,.05) 35%, rgba(0,0,0,.75) 100%); }
+    .brand { position: absolute; z-index: 2; top: 32px; left: 40px; display: flex; align-items: center; gap: 10px;
+             color: #fff; font-family: 'Playfair Display', serif; font-weight: 700; font-size: 22px; }
+    .logo { width: 38px; height: 38px; border-radius: 12px; background: var(--brand); display: grid; place-items: center;
+            font-family: 'DM Sans', sans-serif; font-size: 14px; letter-spacing: -.5px; color: #fff;
+            box-shadow: 0 6px 20px rgba(200,71,43,.45); }
+    .caption { position: absolute; z-index: 2; left: 40px; right: 40px; bottom: 48px; }
+    .tag { display: inline-flex; gap: 6px; align-items: center; padding: 6px 12px; border-radius: 999px;
+           background: rgba(255,255,255,.16); backdrop-filter: blur(8px); font-size: 12px; font-weight: 600;
+           letter-spacing: .08em; text-transform: uppercase; }
+    .headline { font-family: 'Playfair Display', serif; font-size: clamp(30px, 3.4vw, 46px); line-height: 1.12;
+                margin: 16px 0 10px; max-width: 520px; transition: opacity .6s ease, transform .6s ease; }
+    .headline.swap { opacity: 0; transform: translateY(8px); }
+    .sub { color: rgba(255,255,255,.75); max-width: 440px; line-height: 1.6; margin: 0; }
+    .dots { display: flex; gap: 8px; margin-top: 26px; }
+    .dots button { width: 26px; height: 4px; border-radius: 4px; border: 0; padding: 0; cursor: pointer;
+                   background: rgba(255,255,255,.35); transition: background .3s, width .3s; }
+    .dots button.on { background: #fff; width: 44px; }
+    .chip { position: absolute; z-index: 2; padding: 10px 14px; border-radius: 14px; font-size: 13px; font-weight: 600;
+            background: rgba(255,255,255,.92); color: #1c1917; box-shadow: 0 10px 30px rgba(0,0,0,.25);
+            display: flex; align-items: center; gap: 8px; animation: float 6s ease-in-out infinite; }
+    .chip .e { font-size: 18px; }
+    .chip.c1 { top: 22%; right: 12%; }
+    .chip.c2 { top: 42%; left: 9%; animation-delay: -2s; }
+    .chip.c3 { top: 13%; left: 46%; animation-delay: -4s; }
+    @keyframes float { 0%,100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-12px) rotate(1deg); } }
+
+    /* ---------- Right: sign-in card ---------- */
+    .panel { display: flex; align-items: center; justify-content: center; padding: 48px 24px; position: relative;
+             min-width: 0; overflow: hidden; }
+    .panel::before { content: ""; position: absolute; width: 380px; height: 380px; border-radius: 50%;
+      background: radial-gradient(circle, var(--brand-soft) 0%, transparent 70%); top: -80px; right: -120px; pointer-events: none; }
+    .theme-toggle { position: absolute; top: 20px; right: 20px; z-index: 3; width: 40px; height: 40px; border-radius: 12px;
+                    border: 1.5px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer;
+                    display: grid; place-items: center; font-size: 17px; transition: transform .15s; }
+    .theme-toggle:hover { transform: rotate(-12deg); }
+    .card { position: relative; width: 100%; max-width: 410px; animation: rise .7s cubic-bezier(.16,1,.3,1) both; }
+    @keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+    .mobile-brand { display: none; align-items: center; gap: 10px; margin-bottom: 28px;
+                    font-family: 'Playfair Display', serif; font-weight: 700; font-size: 20px; color: var(--ink); }
+    .mobile-brand .logo { width: 34px; height: 34px; }
+    .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--brand); margin: 0 0 8px; }
+    h1 { font-family: 'Playfair Display', serif; font-size: 36px; line-height: 1.15; margin: 0 0 10px; }
+    .lead { color: var(--muted); margin: 0 0 28px; line-height: 1.55; }
+
+    .alert { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; font-size: 14px;
+             line-height: 1.45; margin-bottom: 20px; background: var(--err-bg); color: var(--err); animation: shake .4s ease; }
+    @keyframes shake { 20%,60% { transform: translateX(-5px); } 40%,80% { transform: translateX(5px); } }
+
+    .google { width: 100%; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 13px 16px;
+              border-radius: 14px; border: 1.5px solid var(--line); background: var(--card); color: var(--ink);
+              font: 600 15px 'DM Sans', sans-serif; cursor: pointer; text-decoration: none; box-shadow: var(--shadow);
+              transition: transform .15s ease, border-color .2s ease, box-shadow .2s ease; }
+    .google:hover { text-decoration: none; border-color: #c7c2bf; transform: translateY(-1px); }
+    .google:active { transform: translateY(0) scale(.99); }
+    .google.off { opacity: .55; cursor: not-allowed; box-shadow: none; }
+    .google.off:hover { transform: none; border-color: var(--line); }
+    .note { margin: 8px 0 0; text-align: center; font-size: 12px; color: var(--muted); }
+    .divider { display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: 13px; margin: 24px 0; }
+    .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+    .field { position: relative; margin-bottom: 16px; }
+    .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 7px; }
+    .control { position: relative; }
+    .control svg.icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+    .control input { width: 100%; padding: 13px 44px 13px 42px; border-radius: 12px; border: 1.5px solid var(--line);
+                     background: var(--field); color: var(--ink); font: 15px 'DM Sans', sans-serif; outline: none;
+                     transition: border-color .2s, box-shadow .2s, background .2s; }
+    .control input:focus { border-color: var(--brand); background: var(--card); box-shadow: 0 0 0 4px rgba(200,71,43,.14); }
+    .control:focus-within svg.icon { color: var(--brand); }
+    .toggle { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); border: 0; background: none;
+              color: var(--muted); cursor: pointer; padding: 6px; border-radius: 8px; display: grid; place-items: center; }
+    .toggle:hover { color: var(--ink); background: var(--line); }
+    .caps { display: none; margin-top: 6px; font-size: 12px; color: #b45309; }
+    .caps.show { display: block; }
+
+    .submit { width: 100%; margin-top: 8px; padding: 14px; border: 0; border-radius: 14px; cursor: pointer;
+              background: var(--brand); color: #fff; font: 700 15px 'DM Sans', sans-serif; display: flex;
+              align-items: center; justify-content: center; gap: 10px; box-shadow: 0 10px 24px -8px rgba(200,71,43,.6);
+              transition: background .2s, transform .15s; }
+    .submit:hover { background: var(--brand-dark); }
+    .submit:active { transform: scale(.99); }
+    .submit .arrow { transition: transform .2s; }
+    .submit:hover .arrow { transform: translateX(4px); }
+    .submit[disabled] { opacity: .75; cursor: progress; }
+    .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.45); border-top-color: #fff;
+               border-radius: 50%; animation: spin .7s linear infinite; display: none; }
+    .submit.loading .spinner { display: block; }
+    .submit.loading .arrow { display: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .links { margin-top: 26px; font-size: 14px; color: var(--muted); display: grid; gap: 8px; text-align: center; }
+    .secure { margin-top: 30px; display: flex; align-items: center; justify-content: center; gap: 8px;
+              font-size: 12px; color: var(--muted); }
+    :focus-visible { outline: 3px solid rgba(200,71,43,.45); outline-offset: 2px; }
+
+    @media (max-width: 900px) {
+      body { grid-template-columns: 1fr; }
+      .showcase { display: none; }
+      .mobile-brand { display: flex; }
+      .panel { padding: 40px 16px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+      .slide.active { transform: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===================== Showcase ===================== -->
+<aside class="showcase" aria-hidden="true">
+  <div class="slide active" style="background-image:url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1400&q=80')"></div>
+  <div class="slide" style="background-image:url('https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=1400&q=80')"></div>
+  <div class="slide" style="background-image:url('https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=1400&q=80')"></div>
+  <div class="slide" style="background-image:url('https://images.unsplash.com/photo-1484723091739-30a097e8f929?w=1400&q=80')"></div>
+
+  <div class="brand"><span class="logo">OJ</span> OpenJar</div>
+
+  <div class="chip c1"><span class="e">🍅</span> Fresh &amp; seasonal</div>
+  <div class="chip c2"><span class="e">⏱️</span> Ready in 20 min</div>
+  <div class="chip c3"><span class="e">❤️</span> Loved by the community</div>
+
+  <div class="caption">
+    <span class="tag"><span>✦</span> <span id="tag">Chef's special</span></span>
+    <h2 class="headline" id="headline">Every great dish starts with a recipe.</h2>
+    <p class="sub">Discover recipes from home cooks, save your favourites and share what's cooking in your kitchen.</p>
+    <div class="dots" id="dots"></div>
+  </div>
+</aside>
+
+<!-- ===================== Sign in ===================== -->
+<main class="panel">
+  <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode"></button>
+
+  <div class="card">
+    <a class="mobile-brand" th:href="${frontendUrl}"><span class="logo">OJ</span> OpenJar</a>
+
+    <p class="eyebrow" id="greeting">Welcome back</p>
+    <h1>Sign in to your kitchen</h1>
+    <p class="lead">Pick up where you left off: your recipes, likes and conversations are waiting.</p>
+
+    <div class="alert" role="alert" th:if="${errorKind == 'credentials'}">
+      <span>⚠️</span><span>That email and password don't match. Please try again.</span>
+    </div>
+    <div class="alert" role="alert" th:if="${errorKind == 'unverified'}">
+      <span>✉️</span><span>Please verify your email first.
+        <a th:href="${frontendUrl + '/verify'}">Enter your code</a> or request a new one.</span>
+    </div>
+    <div class="alert" role="alert" th:if="${errorKind == 'google'}">
+      <span>⚠️</span><span>Google sign-in didn't complete. Please try again or use your email.</span>
+    </div>
+
+    <a class="google" th:classappend="${googleEnabled} ? '' : 'off'"
+       th:href="${googleEnabled} ? '/oauth2/authorization/google' : null"
+       th:attr="aria-disabled=${!googleEnabled}" id="google-btn">
+      <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">
+        <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/>
+        <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
+        <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/>
+        <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/>
+      </svg>
+      <span id="google-label">Continue with Google</span>
+    </a>
+    <p class="note" th:unless="${googleEnabled}">Google sign-in isn't enabled on this server yet. Use email for now.</p>
+    <div class="divider">or sign in with email</div>
+
+    <form method="post" action="/login" id="login-form" novalidate>
+      <input type="hidden" th:name="${csrfParam}" th:value="${csrfValue}">
+
+      <div class="field">
+        <label for="username">Email</label>
+        <div class="control">
+          <input type="email" id="username" name="username" autocomplete="username" placeholder="you@example.com"
+                 required autofocus maxlength="254">
+          <svg class="icon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.9 5.3a2 2 0 002.2 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <div class="control">
+          <input type="password" id="password" name="password" autocomplete="current-password" placeholder="••••••••"
+                 required maxlength="72">
+          <svg class="icon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="4" y="11" width="16" height="10" rx="2"/><path stroke-linecap="round" d="M8 11V7a4 4 0 118 0v4"/>
+          </svg>
+          <button type="button" class="toggle" id="toggle" aria-label="Show password" aria-pressed="false">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.5 12S6 5 12 5s9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+        <p class="caps" id="caps" aria-live="polite">Caps Lock is on</p>
+      </div>
+
+      <button type="submit" class="submit" id="submit">
+        <span class="spinner" aria-hidden="true"></span>
+        <span id="submit-label">Sign in</span>
+        <svg class="arrow" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/>
+        </svg>
+      </button>
+    </form>
+
+    <div class="links">
+      <span>New to OpenJar? <a th:href="${frontendUrl + '/register'}">Create a free account</a></span>
+      <span>Registered but not verified? <a th:href="${frontendUrl + '/verify'}">Enter your code</a></span>
+    </div>
+
+    <p class="secure">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 118 0v4"/>
+      </svg>
+      Secured with OAuth 2.0 · the app never sees your password
+    </p>
+  </div>
+</main>
+
+<script>
+  (function () {
+    // ---- Light / dark toggle ----
+    var root = document.documentElement, themeBtn = document.getElementById('theme-toggle');
+    function isDark() {
+      return root.dataset.theme ? root.dataset.theme === 'dark'
+                                : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    function paintToggle() {
+      themeBtn.textContent = isDark() ? '☀️' : '🌙';
+      themeBtn.setAttribute('aria-label', isDark() ? 'Switch to light mode' : 'Switch to dark mode');
+    }
+    themeBtn.addEventListener('click', function () {
+      root.dataset.theme = isDark() ? 'light' : 'dark';
+      try { localStorage.setItem('oj-theme', root.dataset.theme); } catch (e) {}
+      paintToggle();
+    });
+    paintToggle();
+
+    // ---- Time-aware greeting ----
+    var h = new Date().getHours();
+    document.getElementById('greeting').textContent =
+      h < 5 ? 'Late-night craving? 🌙' : h < 12 ? 'Good morning, chef ☀️' : h < 17 ? 'Good afternoon, chef 🍋' : 'Good evening, chef 🍷';
+
+    // ---- Slideshow with matching headlines ----
+    var lines = [
+      ["Chef's special", 'Every great dish starts with a recipe.'],
+      ['Trending now', 'Share your culinary art with the world.'],
+      ['Fresh picks', 'Healthy, colourful and ready in minutes.'],
+      ['Weekend brunch', 'Slow mornings deserve something delicious.']
+    ];
+    var slides = document.querySelectorAll('.slide'), dots = document.getElementById('dots');
+    var headline = document.getElementById('headline'), tag = document.getElementById('tag');
+    var i = 0, timer;
+    slides.forEach(function (_, n) {
+      var b = document.createElement('button');
+      b.setAttribute('aria-label', 'Show slide ' + (n + 1));
+      b.onclick = function () { go(n); restart(); };
+      dots.appendChild(b);
+    });
+    function go(n) {
+      slides[i].classList.remove('active'); dots.children[i].classList.remove('on');
+      i = n;
+      void slides[i].offsetWidth; // restart the Ken Burns animation
+      slides[i].classList.add('active'); dots.children[i].classList.add('on');
+      headline.classList.add('swap');
+      setTimeout(function () { tag.textContent = lines[i][0]; headline.textContent = lines[i][1]; headline.classList.remove('swap'); }, 350);
+    }
+    function restart() { clearInterval(timer); timer = setInterval(function () { go((i + 1) % slides.length); }, 6000); }
+    dots.children[0].classList.add('on');
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) restart();
+
+    // ---- Show / hide password ----
+    var pw = document.getElementById('password'), toggle = document.getElementById('toggle');
+    toggle.addEventListener('click', function () {
+      var show = pw.type === 'password';
+      pw.type = show ? 'text' : 'password';
+      toggle.setAttribute('aria-pressed', String(show));
+      toggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+      pw.focus();
+    });
+
+    // ---- Caps Lock warning ----
+    var caps = document.getElementById('caps');
+    ['keydown', 'keyup'].forEach(function (evt) {
+      pw.addEventListener(evt, function (e) { caps.classList.toggle('show', !!(e.getModifierState && e.getModifierState('CapsLock'))); });
+    });
+
+    // ---- Friendly validation + loading state ----
+    var form = document.getElementById('login-form'), submit = document.getElementById('submit');
+    form.addEventListener('submit', function (e) {
+      var email = document.getElementById('username');
+      if (!email.value.trim() || !pw.value) { e.preventDefault(); (email.value.trim() ? pw : email).focus(); return; }
+      submit.classList.add('loading'); submit.disabled = true;
+      document.getElementById('submit-label').textContent = 'Signing you in…';
+    });
+
+    var g = document.getElementById('google-btn');
+    if (g && !g.classList.contains('off')) {
+      g.addEventListener('click', function () {
+        g.style.opacity = '.7';
+        document.getElementById('google-label').textContent = 'Redirecting to Google…';
+      });
+    }
+  })();
+</script>
+</body>
+</html>

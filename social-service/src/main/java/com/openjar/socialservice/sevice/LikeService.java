@@ -1,234 +1,81 @@
 package com.openjar.socialservice.sevice;
 
-//
-//import com.recipeapp.Like_service.Cofigurations.RabbitMQConfig;
-//import com.recipeapp.Like_service.Cofigurations.WebClientConfig;
-//import com.recipeapp.Like_service.DTO.LikeDto;
-//import com.recipeapp.Like_service.DTO.LikeNotificationDto;
-//import com.recipeapp.Like_service.DTO.RecipeDTO;
-//import com.recipeapp.Like_service.DTO.UserDto;
-//import com.recipeapp.Like_service.Event.LikeEvent;
-//import com.recipeapp.Like_service.Repository.LikeRepo;
-//import lombok.extern.slf4j.Slf4j;
-//import org.springframework.context.ApplicationEventPublisher;
-//import org.springframework.stereotype.Service;
-//import org.springframework.transaction.annotation.Transactional;
-//import org.springframework.amqp.rabbit.core.RabbitTemplate;
-//import org.springframework.web.reactive.function.client.WebClient;
-//@Slf4j
-//@Service
-//public class LikeService {
-//
-//    private LikeRepo likeRepository;
-//    private final RabbitTemplate rabbitTemplate;
-//
-//
-//
-////    private final WebClient.Builder webClientBuilder;
-//private final WebClient webClientBuilder;
-//
-//    public LikeService(LikeRepo repo, RabbitTemplate rabbitTemplate, WebClient.Builder webClientBuilder) {
-//        this.likeRepository = repo;
-//        this.rabbitTemplate = rabbitTemplate;
-////        this.webClientBuilder = webClientBuilder;
-//        this.webClientBuilder = webClientBuilder.baseUrl("http://localhost:8086").build();
-//
-//    }
-//
-//
-//    @Transactional
-//    public LikeDto toggleLike(String userId, Long recipeId) {
-//        Long alreadyLiked = likeRepository.existsByUserIdAndRecipeId(userId, recipeId);
-//
-//        if (alreadyLiked!=0) {
-//            likeRepository.deleteByUserIdAndRecipeId(userId, recipeId);
-//            rabbitTemplate.convertAndSend(
-//                    RabbitMQConfig.EXCHANGE,
-//                    RabbitMQConfig.LIKE_ROUTING_KEY,
-//                    new LikeEvent(recipeId, -1)  // ← change this
-//            );
-//            long totalLikes = likeRepository.countByRecipeId(recipeId);
-//            return LikeDto.of("UNLIKED", totalLikes);
-//        } else {
-//            likeRepository.insertLike(userId, recipeId);
-//            rabbitTemplate.convertAndSend(
-//                    RabbitMQConfig.EXCHANGE,
-//                    RabbitMQConfig.LIKE_ROUTING_KEY,
-//                    new LikeEvent(recipeId, +1)  // ← change this
-//            );
-//            try {
-//                RecipeDTO recipe =webClientBuilder.get()
-//                        .uri("http://recipe-service/api/recipes/{id}", recipeId)
-//                        .retrieve()
-//                        .bodyToMono(RecipeDTO.class)
-//                        .block();
-//
-//                UserDto recipeOwner = webClientBuilder.get()
-//                        .uri("http://user-service/api/users/{id}", recipe.getUserId())
-//                        .retrieve()
-//                        .bodyToMono(UserDto.class)
-//                        .block();
-//
-//                UserDto likedByUser = webClientBuilder.get()
-//                        .uri("http://user-service/api/users/{id}", userId)
-//                        .retrieve()
-//                        .bodyToMono(UserDto.class)
-//                        .block();
-//
-//                rabbitTemplate.convertAndSend(
-//                        RabbitMQConfig.EXCHANGE,
-//                        RabbitMQConfig.LIKE_Recipe_ROUTING_KEY ,
-//                        new LikeNotificationDto(
-//                                likedByUser.getUserName(),
-//                                recipeOwner.getUserName(),
-//                                recipeOwner.getUserEmail(),
-//                                recipe.getRecipeName()
-//                        )
-//                );
-//                log.info("Like notification sent for recipe {}", recipeId);
-//
-//            } catch (Exception e) {
-//                // notification failed but like still works!
-//                log.error(" Failed to send like notification: {}", e.getMessage());
-//            }
-//
-//            long totalLikes = likeRepository.countByRecipeId(recipeId);
-//            return LikeDto.of("LIKED", totalLikes);
-//        }
-//    }
-//
-//    public long getLikeCount(Long recipeId) {
-//        return likeRepository.countByRecipeId(recipeId);
-//    }
-//
-//    public Long hasUserLiked(String userId, Long recipeId) {
-//        return likeRepository.existsByUserIdAndRecipeId(userId, recipeId);
-//    }
-//}
-
 import com.openjar.socialservice.Events.LikeEvent;
+import com.openjar.socialservice.config.CurrentUser;
 import com.openjar.socialservice.config.RabbitMQConfig;
 import com.openjar.socialservice.dto.LikeDto.EmailNotificationDto;
-import com.openjar.socialservice.dto.LikeDto.LikeDto;
-import com.openjar.socialservice.dto.LikeDto.RecipeDTO;
-import com.openjar.socialservice.dto.LikeDto.UserDto;
+import com.openjar.socialservice.dto.LikeDto.LikeSummaryDto;
+import com.openjar.socialservice.dto.RecipeResponseDto;
+import com.openjar.socialservice.repository.LikeRepo;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.reactive.function.client.WebClient;
-import com.openjar.socialservice.repository.LikeRepo;
+
 import java.util.HashMap;
+import java.util.Optional;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class LikeService {
 
-    private LikeRepo likeRepository;
+    private final LikeRepo likeRepository;
     private final RabbitTemplate rabbitTemplate;
-
-    // ✅ CHANGE 1: Back to WebClient.Builder
-    private final WebClient.Builder webClientBuilder;
-
-    public LikeService(LikeRepo repo, RabbitTemplate rabbitTemplate, WebClient.Builder webClientBuilder) {
-        this.likeRepository = repo;
-        this.rabbitTemplate = rabbitTemplate;
-        // ✅ CHANGE 2: Just store the builder, no baseUrl or build()
-        this.webClientBuilder = webClientBuilder;
-    }
-
+    private final PlatformClient platformClient;
 
     @Transactional
-    public LikeDto toggleLike(String userId, Long recipeId) {
-        Long alreadyLiked = likeRepository.existsByUserIdAndRecipeId(userId, recipeId);
+    public LikeSummaryDto toggleLike(Long recipeId, CurrentUser user) {
+        boolean alreadyLiked = likeRepository.existsByUserIdAndRecipeId(user.userId(), recipeId) > 0;
 
-        if (alreadyLiked!=0) {
-            likeRepository.deleteByUserIdAndRecipeId(userId, recipeId);
-            rabbitTemplate.convertAndSend(
-                    RabbitMQConfig.OPENJAR_EXCHANGE,
-                    RabbitMQConfig.LIKE_ROUTING_KEY,
-                    new LikeEvent(recipeId, -1)  // ← change this
-            );
-            long totalLikes = likeRepository.countByRecipeId(recipeId);
-            return LikeDto.of("UNLIKED", totalLikes);
-        } else {
-            likeRepository.insertLike(userId, recipeId);
-            rabbitTemplate.convertAndSend(
-                    RabbitMQConfig.OPENJAR_EXCHANGE,
-                    RabbitMQConfig.LIKE_ROUTING_KEY,
-                    new LikeEvent(recipeId, +1)  // ← change this
-            );
-            try {
-                RecipeDTO recipe = webClientBuilder.build()
-                        .get()
-                        .uri("http://recipe-service/recipe/{id}", recipeId)
-                        .retrieve()
-                        .bodyToMono(RecipeDTO.class)
-                        .block();
-                log.info("Recipe fetched: {}", recipe);
-                UserDto recipeOwner = webClientBuilder.build()
-                        .get()
-                        .uri("http://user-service/api/users/{id}", recipe.getUserId())
-                        .retrieve()
-                        .bodyToMono(UserDto.class)
-                        .block();
-                log.info("Ownner fetched: {}", recipeOwner);
+        if (alreadyLiked) {
+            likeRepository.deleteByUserIdAndRecipeId(user.userId(), recipeId);
+            publishCountChange(recipeId, -1);
+            return new LikeSummaryDto(likeRepository.countByRecipeId(recipeId), false);
+        }
 
-                UserDto likedByUser = webClientBuilder.build()
-                        .get()
-                        .uri("http://user-service/api/users/{id}", userId)
-                        .retrieve()
-                        .bodyToMono(UserDto.class)
-                        .block();
-                log.info("LikedByUser fetched: {}", likedByUser);
+        Optional<RecipeResponseDto> recipe = platformClient.findRecipe(recipeId); // 404s if missing
+        likeRepository.insertLike(user.userId(), recipeId);
+        publishCountChange(recipeId, +1);
+        recipe.ifPresent(r -> notifyOwner(r, user));
+        return new LikeSummaryDto(likeRepository.countByRecipeId(recipeId), true);
+    }
 
+    public LikeSummaryDto getSummary(Long recipeId, String userIdOrNull) {
+        long total = likeRepository.countByRecipeId(recipeId);
+        boolean liked = userIdOrNull != null && likeRepository.existsByUserIdAndRecipeId(userIdOrNull, recipeId) > 0;
+        return new LikeSummaryDto(total, liked);
+    }
 
-                triggerNotification(recipe, recipeOwner,likedByUser);
-                log.info("Like notification sent for recipe {}", recipeId);
-
-            } catch (Exception e) {
-                // notification failed but like still works!
-                log.error(" Failed to send like notification: {}", e.getMessage());
-            }
-
-            long totalLikes = likeRepository.countByRecipeId(recipeId);
-            return LikeDto.of("LIKED", totalLikes);
+    private void publishCountChange(Long recipeId, int delta) {
+        try {
+            rabbitTemplate.convertAndSend(RabbitMQConfig.OPENJAR_EXCHANGE, RabbitMQConfig.LIKE_ROUTING_KEY,
+                    new LikeEvent(recipeId, delta));
+        } catch (Exception e) {
+            log.error("Could not publish like event for recipe {}: {}", recipeId, e.getMessage());
         }
     }
 
+    /** Best effort: never fails the like itself. */
+    private void notifyOwner(RecipeResponseDto recipe, CurrentUser likedBy) {
+        if (recipe.getUserId() == null || recipe.getUserId().equals(likedBy.userId())) {
+            return;
+        }
+        platformClient.findUserWithEmail(recipe.getUserId()).ifPresent(owner -> {
+            try {
+                HashMap<String, Object> model = new HashMap<>();
+                model.put("recipeName", recipe.getRecipeName());
+                model.put("userName", owner.getUserName());
+                model.put("likeeName", likedBy.userName());
 
-    public  void triggerNotification(RecipeDTO recipe ,UserDto recipeOwner , UserDto likedByUser){
-        HashMap<String,Object> model = new HashMap<>();
-        model.put("recipeName",recipe.getRecipeName());
-        model.put("userName",recipeOwner.getUserName());
-        model.put("likeeName",likedByUser.getUserName());
-
-
-        EmailNotificationDto notification = new EmailNotificationDto(
-                recipeOwner.getUserEmail(),
-                "Success! '" + likedByUser.getUserName() + "' liked your recipe"+recipe.getRecipeName(),
-                "like-created", // The HTML file name
-                model
-        );
-
-        rabbitTemplate.convertAndSend(
-                RabbitMQConfig.OPENJAR_EXCHANGE,
-                RabbitMQConfig.LIKE_Recipe_ROUTING_KEY,
-                notification
-        );
-
-
-        log.info("Like notification queued for {}", recipeOwner.getUserEmail());
-
-
-
-    }
-
-    public long getLikeCount(Long recipeId) {
-        return likeRepository.countByRecipeId(recipeId);
-    }
-
-    public Long hasUserLiked(String userId, Long recipeId) {
-        return likeRepository.existsByUserIdAndRecipeId(userId, recipeId);
+                rabbitTemplate.convertAndSend(RabbitMQConfig.OPENJAR_EXCHANGE, RabbitMQConfig.LIKE_Recipe_ROUTING_KEY,
+                        new EmailNotificationDto(owner.getUserEmail(),
+                                likedBy.userName() + " liked your recipe " + recipe.getRecipeName(),
+                                "like-created", model));
+            } catch (Exception e) {
+                log.error("Could not queue like notification for recipe {}: {}", recipe.getRecipeId(), e.getMessage());
+            }
+        });
     }
 }

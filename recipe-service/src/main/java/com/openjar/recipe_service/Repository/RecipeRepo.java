@@ -11,64 +11,15 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 @Repository
-public interface RecipeRepo extends JpaRepository<Recipe,Long> {
+public interface RecipeRepo extends JpaRepository<Recipe, Long> {
+
+    List<Recipe> findAllByOrderByRecipeIdDesc();
+
+    List<Recipe> findByUserIdOrderByRecipeIdDesc(String userId);
 
     @Modifying
     @Transactional
-    @Query(value = "INSERT INTO recipe (recipe_name, prep_time, category, ingredients, recipe_instructions, recipe_image_url,like_count, user_id) " +
-            "VALUES (:name, :prepTime, :category, :ingredients, :instructions, :imageUrl,0, :userId)", nativeQuery = true)
-    int insertRecipe(
-            @Param("name") String name,
-            @Param("prepTime") int prepTime,
-            @Param("category") String category,
-            @Param("ingredients") String ingredients,
-            @Param("instructions") String instructions,
-            @Param("imageUrl") String imageUrl,
-            @Param("userId") String userId
-    );
-
-    // ✅ GET ALL
-    @Query(value = "SELECT * FROM recipe", nativeQuery = true)
-    List<Recipe> getAllRecipe();
-
-    // ✅ GET BY ID
-    @Query(value = "SELECT * FROM recipe WHERE recipe_id = :id", nativeQuery = true)
-    Recipe getRecipeById(@Param("id") Long id);
-
-    // ✅ DELETE
-    @Modifying
-    @Transactional
-    @Query(value = "DELETE FROM recipe WHERE recipe_id = :id", nativeQuery = true)
-    int deleteRecipeById(@Param("id") Long id);
-
-    // ✅ UPDATE
-    @Modifying
-    @Transactional
-    @Query(value = "UPDATE recipe SET recipe_name = :name, prep_time = :prepTime, category = :category, " +
-            "ingredients = :ingredients, recipe_instructions = :instructions, recipe_image_url = :imageUrl, user_id = :userId " +
-            "WHERE recipe_id = :id", nativeQuery = true)
-    int updateRecipe(
-            @Param("name") String name,
-            @Param("prepTime") int prepTime,
-            @Param("category") String category,
-            @Param("ingredients") String ingredients,
-            @Param("instructions") String instructions,
-            @Param("imageUrl") String imageUrl,
-            @Param("userId") String userId,
-            @Param("id") Long id
-    );
-
-
-    @Modifying
-    @Transactional
-    @Query(value = "UPDATE recipe SET like_count = like_count + :delta WHERE recipe_id = :recipeId",
+    @Query(value = "UPDATE recipe SET like_count = GREATEST(like_count + :delta, 0) WHERE recipe_id = :recipeId",
             nativeQuery = true)
     void updateLikeCount(@Param("recipeId") Long recipeId, @Param("delta") int delta);
-
-
-    // ✅ FETCH THE LAST GENERATED ID
-    // This gets the auto-increment ID from the last insert on the current database connection
-    @Query(value = "SELECT LAST_INSERT_ID()", nativeQuery = true)
-    Long getLastInsertId();
-
 }

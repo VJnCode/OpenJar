@@ -1,64 +1,70 @@
 package com.openjar.recipe_service.Controller;
 
-
 import com.openjar.recipe_service.DTO.RecipeRequestDto;
 import com.openjar.recipe_service.Model.Recipe;
 import com.openjar.recipe_service.Service.RecipeService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/recipe")
-public class
-RecipeController {
+@RequiredArgsConstructor
+public class RecipeController {
 
-    private RecipeService service;
-    public  RecipeController (RecipeService service){
-        this.service=service;
-    }
-
-    @PostMapping("/{userId}")
-    public ResponseEntity<?> saveRecipe(@RequestBody RecipeRequestDto recipe,
-                                        @PathVariable String userId){
-//        recipe.setUserId(userId);
-        String response=  service.saveRecipe(recipe, userId);
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body("Recipe added successfully");
-    }
-
+    private final RecipeService service;
 
     @GetMapping
-    public ResponseEntity<?>getAllRecipe(){
-        List<Recipe> response=service.getAllRecipe();
-        return ResponseEntity.ok(response);
+    public List<Recipe> getAllRecipes() {
+        return service.getAllRecipes();
+    }
+
+    @GetMapping("/user/{userId}")
+    public List<Recipe> getRecipesByUser(@PathVariable String userId) {
+        return service.getRecipesByUser(userId);
     }
 
     @GetMapping("/{recipeId}")
-    public ResponseEntity<?> getRecipe(@PathVariable long recipeId){
-        Recipe response=service.getRecipeById( recipeId);
-        return ResponseEntity.ok(response);
+    public Recipe getRecipe(@PathVariable long recipeId) {
+        return service.getRecipeById(recipeId);
+    }
+
+    @PostMapping
+    public ResponseEntity<Recipe> createRecipe(@Valid @RequestBody RecipeRequestDto recipe,
+                                               @AuthenticationPrincipal Jwt jwt) {
+        Recipe saved = service.saveRecipe(recipe, CurrentUser.from(jwt));
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+    }
+
+    @PutMapping("/{recipeId}")
+    public Recipe updateRecipe(@PathVariable long recipeId,
+                               @Valid @RequestBody RecipeRequestDto updatedRecipe,
+                               @AuthenticationPrincipal Jwt jwt) {
+        return service.updateRecipeById(recipeId, updatedRecipe, CurrentUser.from(jwt).userId());
     }
 
     @DeleteMapping("/{recipeId}")
-    public  ResponseEntity<?>  deleteRecipe(@PathVariable long recipeId){
-        String response=service.deleteRecipeById(recipeId);
-        return ResponseEntity.ok(response);
+    public Map<String, String> deleteRecipe(@PathVariable long recipeId, @AuthenticationPrincipal Jwt jwt) {
+        service.deleteRecipeById(recipeId, CurrentUser.from(jwt).userId());
+        return Map.of("message", "Recipe deleted");
     }
 
-
-    @PutMapping("/{recipeId}")
-    public ResponseEntity<?> updateRecipeById(@PathVariable long recipeId , @RequestBody  RecipeRequestDto updatedRecipe,
-                                              @PathVariable String userId){
-        Recipe resposne =service.updateRecipeById(recipeId , updatedRecipe,userId);
-        return ResponseEntity.ok(resposne);
+    /** Identity extracted from the access token issued by user-service. */
+    public record CurrentUser(String userId, String userName, String email) {
+        static CurrentUser from(Jwt jwt) {
+            String uid = jwt == null ? null : jwt.getClaimAsString("uid");
+            if (uid == null) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token has no user id");
+            }
+            return new CurrentUser(uid, jwt.getClaimAsString("name"), jwt.getClaimAsString("email"));
+        }
     }
-
-
-
-
-
 }

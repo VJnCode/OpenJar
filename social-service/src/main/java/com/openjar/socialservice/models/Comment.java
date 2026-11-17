@@ -5,7 +5,7 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "comments")
+@Table(name = "comments", indexes = @Index(name = "idx_comment_recipe", columnList = "recipeId"))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -16,8 +16,11 @@ public class Comment {
     @Id
     private String commentId;
 
-    private String recipeId;
+    private Long recipeId;
     private String userId;
+
+    /** Display name captured at posting time (from the JWT), so reads need no user lookup. */
+    private String userName;
 
     @Column(columnDefinition = "TEXT")
     private String content;
@@ -26,6 +29,7 @@ public class Comment {
 
     private String parentId;
 
+    @Builder.Default
     @Column(name = "is_deleted")
     private boolean isDeleted = false;
 
@@ -36,6 +40,4 @@ public class Comment {
         }
         this.createdAt = LocalDateTime.now();
     }
-
-
 }

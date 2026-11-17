@@ -1,67 +1,50 @@
 server:
-  port: 8088
-
+  port: ${SERVER_PORT:8088}
 
 eureka:
   instance:
     prefer-ip-address: true
-    ip-address: 127.0.0.1
-    hostname: 127.0.0.1
     instance-id: ${spring.application.name}:${server.port}
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
-    fetch-registry: true
-    register-with-eureka: true
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
 
 spring:
   application:
     name: notification-service
 
-
   datasource:
-    url: jdbc:mysql://localhost:3306/notification_service
-    username: root
-    password: ROOT
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/openjar_notification?createDatabaseIfNotExist=true}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
-
-  # Database Configuration
-#  datasource:
-#    url: ${DB_URL:jdbc:mysql://localhost:3306/openjar_notification}
-#    username: ${DB_USER:root}
-#    password: ${DB_PASS:1234}
-#    driver-class-name: com.mysql.cj.jdbc.Driver
-
-
 
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: false
-    properties:
-      hibernate:
-        format_sql: true
 
-  # RabbitMQ Configuration
-  RabbitMQ:
-    host: ${RABBIT_HOST:localhost}
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
     port: 5672
-    username: ${RABBIT_USER:guest}
-    password: ${RABBIT_PASS:guest}
+    username: ${SPRING_RABBITMQ_USERNAME:guest}
+    password: ${SPRING_RABBITMQ_PASSWORD:guest}
     listener:
       simple:
+        default-requeue-rejected: false
         retry:
           enabled: true
           initial-interval: 3000ms
           max-attempts: 3
           multiplier: 2.0
 
-  # Email Configuration (SMTP)
+  # SMTP credentials come ONLY from the environment (use a Gmail *app password*).
   mail:
-    host: smtp.gmail.com
-    port: 587
-    username: ${MAIL_USER:vjcodes247@gmail.com}
-    password: ${MAIL_PASS:tunkpiqvzmfngkup}
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    # Empty = service still starts; sends fail and are logged as FAILED.
+    username: ${MAIL_USER:}
+    password: ${MAIL_PASS:}
     properties:
       mail:
         smtp:
@@ -76,9 +59,15 @@ management:
       exposure:
         include: health
 
-springdoc:
-  api-docs:
-    path: /api/notifications/v3/api-docs
+logging:
+  pattern:
+    # Every line carries the X-Request-Id of the request it belongs to.
+    level: "%5p [%X{requestId:-}]"
+  level:
+    # Per-request, per-operation and per-DB-call timings. Set any of these to OFF or DEBUG to quieten.
+    openjar.timing.http: INFO
+    openjar.timing.op: INFO
+    openjar.timing.db: INFO
 
 ---
 spring:
@@ -95,5 +84,5 @@ spring:
   mail:
     host: localhost
     port: 1025
-    # No auth needed for local testing tools
-
+    username: test
+    password: test

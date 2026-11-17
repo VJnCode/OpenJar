@@ -6,7 +6,8 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "users")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -19,7 +20,7 @@ public class User {
     @Column(name = "user_name")
     private String userName;
 
-    @Column(name = "user_email")
+    @Column(name = "user_email", unique = true)
     private String userEmail;
 
     @Column(name = "password")
@@ -28,10 +29,20 @@ public class User {
     @Column(name = "is_verified")
     private Boolean isVerified;
 
+    /** BCrypt hash of the one-time verification code (never stored in plain text). */
     @Column(name = "otp")
     private String otp;
+
+    @Column(name = "otp_expires_at")
+    private LocalDateTime otpExpiresAt;
+
+    @Column(name = "otp_attempts")
+    private Integer otpAttempts;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
+    public boolean isVerifiedAccount() {
+        return Boolean.TRUE.equals(isVerified);
+    }
 }

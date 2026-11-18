@@ -7,7 +7,7 @@ COPY src ./src
 RUN mvn clean package -DskipTests -B
 
 # Stage 2: Runtime (JRE only, non-root user, no signing keys baked into the image)
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:25-jre-alpine
 WORKDIR /app
 RUN addgroup -S -g 10001 app && adduser -S -u 10001 -G app app
 COPY --from=build /app/target/*.jar app.jar

@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.3.6</version>
+		<version>4.1.2</version>
 		<relativePath/>
 	</parent>
 	<groupId>com.openjar</groupId>
@@ -14,7 +14,7 @@
 
 	<properties>
 		<java.version>17</java.version>
-		<spring-cloud.version>2023.0.3</spring-cloud.version>
+		<spring-cloud.version>2025.1.4</spring-cloud.version>
 		<lombok.version>1.18.32</lombok.version>
 	</properties>
 

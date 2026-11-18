@@ -1,0 +1,20 @@
+# Non-secret settings shared by the services. Secrets live in the "openjar-secrets" Secret,
+# generated per overlay (never committed).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openjar-config
+  labels: {app.kubernetes.io/part-of: openjar}
+data:
+  # Everything is served from ONE public origin through the Ingress, so the browser,
+  # the gateway's OAuth client and the token issuer all agree on the same URL.
+  AUTH_ISSUER: "http://localhost"
+  FRONTEND_URL: "http://localhost"
+  OAUTH_REDIRECT_URI: "http://localhost/login/oauth2/code/openjar-client"
+  # In-cluster address the gateway / resource servers use to reach user-service.
+  AUTH_INTERNAL_URL: "http://user-service:8086"
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://eureka:8761/eureka/"
+  SPRING_RABBITMQ_HOST: "rabbitmq"
+  # Trust X-Forwarded-* from the ingress controller so redirects use the public URL.
+  SERVER_FORWARD_HEADERS_STRATEGY: "native"
+  DEV_LOG_OTP: "false"

@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openjar
+  labels:
+    app.kubernetes.io/part-of: openjar
+    # Enforce the "restricted" Pod Security Standard for app pods (warn-only for the data stores below).
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted

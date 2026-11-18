@@ -1,0 +1,18 @@
+# kind cluster for OpenJar. The ingress controller listens on the node's port 80, which is
+# published as http://localhost on your machine (127.0.0.1 only, not your whole network).
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: openjar
+nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 80
+        listenAddress: "127.0.0.1"
+        protocol: TCP

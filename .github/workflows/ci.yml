@@ -1,0 +1,189 @@
+name: CI / CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A newer push to the same branch/PR cancels the older run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  JAVA_VERSION: "17"
+
+jobs:
+  # ------------------------------------------------------------------------------------
+  # 1. Compile + unit tests for every service in parallel
+  # ------------------------------------------------------------------------------------
+  build-test:
+    name: build & test (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [eureka, user-service, recipe-service, social-service, notification-service, api-gateway, recommendation-service]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+          cache-dependency-path: ${{ matrix.service }}/pom.xml
+      - name: Build and run unit tests
+        working-directory: ${{ matrix.service }}
+        # *ApplicationTests boot the full context (needs MySQL/RabbitMQ); the e2e job covers that.
+        run: mvn -B -ntp verify "-Dtest=!*ApplicationTests" -Dsurefire.failIfNoSpecifiedTests=false
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-${{ matrix.service }}
+          path: ${{ matrix.service }}/target/surefire-reports
+          retention-days: 7
+
+  # ------------------------------------------------------------------------------------
+  # 2. Secret scanning (this repo has leaked keys before - never again)
+  # ------------------------------------------------------------------------------------
+  secret-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ------------------------------------------------------------------------------------
+  # 3. End-to-end: deploy everything to a throw-away Kubernetes (kind) cluster and test it
+  # ------------------------------------------------------------------------------------
+  e2e:
+    name: e2e on Kubernetes (kind)
+    needs: build-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SERVICES: eureka user-service recipe-service social-service notification-service api-gateway
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: crazy-max/ghaction-github-runtime@v3   # lets the docker CLI use the GitHub Actions cache
+
+      - name: Build service images
+        run: |
+          for s in $SERVICES; do
+            echo "::group::$s"
+            docker buildx build "$s" --load -t "openjar/$s:ci" \
+              --cache-from "type=gha,scope=$s" --cache-to "type=gha,scope=$s,mode=max"
+            echo "::endgroup::"
+          done
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: openjar
+          config: k8s/kind-config.yaml
+
+      - name: Install ingress-nginx
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.3/deploy/static/provider/kind/deploy.yaml
+          kubectl -n ingress-nginx wait --for=condition=ready pod -l app.kubernetes.io/component=controller --timeout=180s
+
+      - name: Load images into the cluster
+        run: kind load docker-image --name openjar $(for s in $SERVICES; do printf 'openjar/%s:ci ' "$s"; done)
+
+      - name: Deploy (random throw-away secrets)
+        run: |
+          r() { openssl rand -hex 16; }
+          cat > k8s/overlays/ci/secrets.env <<EOF
+          MYSQL_ROOT_PASSWORD=$(r)
+          RABBITMQ_USER=openjar
+          RABBITMQ_PASS=$(r)
+          OAUTH_CLIENT_SECRET=$(r)
+          INTERNAL_API_TOKEN=$(r)
+          EOF
+          sed -i 's/^ *//' k8s/overlays/ci/secrets.env
+          kubectl apply -k k8s/overlays/ci
+
+      - name: Wait for rollout
+        run: |
+          kubectl -n openjar rollout status statefulset/mysql --timeout=300s
+          for d in rabbitmq $SERVICES; do kubectl -n openjar rollout status deployment/$d --timeout=600s; done
+
+      - name: Smoke tests (incl. full sign-in -> create recipe journey)
+        run: |
+          pip install --quiet bcrypt
+          for i in $(seq 1 30); do curl -sf -o /dev/null http://localhost/api/csrf && break; sleep 5; done
+          # The frontend is built in its own repo, so "/" has no backend in this cluster.
+          EXPECT_ROOT=503 SEED_USER=1 bash k8s/smoke-test.sh
+
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          kubectl -n openjar get pods,svc,ingress -o wide || true
+          kubectl -n openjar get events --sort-by=.lastTimestamp | tail -40 || true
+          for d in $SERVICES rabbitmq; do echo "===== $d"; kubectl -n openjar logs deployment/$d --tail=80 || true; done
+
+  # ------------------------------------------------------------------------------------
+  # 4. On main: build, scan and publish images to GitHub Container Registry
+  # ------------------------------------------------------------------------------------
+  publish:
+    name: publish image (${{ matrix.service }})
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [build-test, secret-scan, e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [eureka, user-service, recipe-service, social-service, notification-service, api-gateway, recommendation-service]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/openjar-${{ matrix.service }}
+          tags: |
+            type=sha,format=short
+            type=raw,value=latest
+      - name: Build (for scanning)
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.service }}
+          load: true
+          tags: scan-me:latest
+          cache-from: type=gha,scope=${{ matrix.service }}
+      - name: Vulnerability scan (Trivy)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: scan-me:latest
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "0"        # report only; set to "1" to block releases on fixable HIGH/CRITICAL CVEs
+      - name: Push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.service }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,scope=${{ matrix.service }},mode=max

@@ -1,0 +1,23 @@
+# Local kind cluster: images are built on your machine and loaded into kind (tag "local").
+# Secrets come from secrets.env, which deploy-local.sh writes from ../.env (git-ignored).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: openjar
+
+resources:
+  - ../../base
+
+secretGenerator:
+  - name: openjar-secrets
+    envs: [secrets.env]
+    options:
+      disableNameSuffixHash: true
+
+images:
+  - {name: openjar/eureka,               newTag: local}
+  - {name: openjar/user-service,         newTag: local}
+  - {name: openjar/recipe-service,       newTag: local}
+  - {name: openjar/social-service,       newTag: local}
+  - {name: openjar/notification-service, newTag: local}
+  - {name: openjar/api-gateway,          newTag: local}
+  - {name: openjar/frontend,             newTag: local}

@@ -172,7 +172,7 @@ public class SecurityConfig {
             GoogleOidcUserService googleOidcUserService) throws Exception {
         http
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/login", "/error", "/actuator/health", "/favicon.ico").permitAll()
+                        .requestMatchers("/login", "/error", "/actuator/health", "/favicon.ico", "/auth-assets/**").permitAll()
                         .anyRequest().authenticated())
                 // CSRF stays ENABLED for the session-based login form (prevents login CSRF).
                 .formLogin(form -> form.loginPage("/login").permitAll())

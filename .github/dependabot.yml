@@ -1,0 +1,36 @@
+# Weekly pull requests for outdated / vulnerable dependencies. CI (incl. the Kubernetes e2e)
+# runs on each one, so a green Dependabot PR is safe to merge.
+version: 2
+updates:
+  - package-ecosystem: maven
+    directories:
+      - /eureka
+      - /user-service
+      - /recipe-service
+      - /social-service
+      - /notification-service
+      - /api-gateway
+      - /recommendation-service
+    schedule: {interval: weekly}
+    open-pull-requests-limit: 10
+    groups:
+      spring:
+        patterns: ["org.springframework*"]
+      everything-else:
+        patterns: ["*"]
+        exclude-patterns: ["org.springframework*"]
+
+  - package-ecosystem: docker
+    directories:
+      - /eureka
+      - /user-service
+      - /recipe-service
+      - /social-service
+      - /notification-service
+      - /api-gateway
+      - /recommendation-service
+    schedule: {interval: weekly}
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: {interval: weekly}

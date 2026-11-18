@@ -1,0 +1,36 @@
+# Ephemeral cluster inside GitHub Actions (see .github/workflows/ci.yml, job "e2e").
+# Backend only: the frontend image is built in the OpenJar-Frontend repository.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: openjar
+
+resources:
+  - ../../base
+
+secretGenerator:
+  - name: openjar-secrets
+    envs: [secrets.env]          # random throw-away values written by the workflow
+    options:
+      disableNameSuffixHash: true
+
+patches:
+  - patch: |-
+      $patch: delete
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: frontend
+  - patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: frontend
+
+images:
+  - {name: openjar/eureka,               newTag: ci}
+  - {name: openjar/user-service,         newTag: ci}
+  - {name: openjar/recipe-service,       newTag: ci}
+  - {name: openjar/social-service,       newTag: ci}
+  - {name: openjar/notification-service, newTag: ci}
+  - {name: openjar/api-gateway,          newTag: ci}

@@ -107,7 +107,7 @@ public class CommentServiceImpl implements CommentService {
                 model.put("recipeTitle", recipe.getRecipeName());
                 model.put("commentContent", content);
                 model.put("commenterName", author.userName());
-                model.put("recipeUrl", frontendUrl + "/recipe/" + recipe.getRecipeId());
+                model.put("recipeUrl", frontendUrl + "/recipes/" + recipe.getRecipeId());
                 model.put("recipeImageUrl", recipe.getRecipeImageUrl());
 
                 rabbitTemplate.convertAndSend(RabbitMQConfig.OPENJAR_EXCHANGE, RabbitMQConfig.NOTIFICATION_ROUTING_KEY,
